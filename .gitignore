@@ -213,8 +213,11 @@ __marimo__/
 __pycache__/
 *.py[cod]
 
-# Ignorar el Excel de resultados
+# Ignorar Excel de resultados
+100_ETFs_AnalisisDescriptivo
 100_ETFs_Screening.xlsx
+100_ETFs_Allocation.xlsx
+
 
 # Ignorar cualquier gráfica que se guarde automáticamente
 *.png
