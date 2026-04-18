@@ -205,3 +205,17 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+# --- TFM ---
+
+# Ignorar carpetas temporales de Python
+__pycache__/
+*.py[cod]
+
+# Ignorar el Excel de resultados
+100_ETFs_Screening.xlsx
+
+# Ignorar cualquier gráfica que se guarde automáticamente
+*.png
+*.jpg
