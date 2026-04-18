@@ -286,7 +286,7 @@ def W_HERC(Sigma, K):
         Sigma = Sigma.copy()
         np.fill_diagonal(Sigma, np.maximum(diag, floor))
 
-    w_herc, _, _ = HERC(Sigma, K)
+    w_herc, _, _ = HERC(Sigma)
     
     # Aplanamos por seguridad y aplicamos clip
     w_herc = np.clip(np.asarray(w_herc).flatten(), 0.0, 1.0)
