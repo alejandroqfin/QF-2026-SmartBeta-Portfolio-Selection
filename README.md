@@ -12,5 +12,5 @@ UTILS:
   -   hrp.py
 
 MAIN:
-  -main1.py
-  -main2.py
+  -   main1.py
+  -   main2.py
