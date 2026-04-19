@@ -92,15 +92,18 @@ def getCorrMatrix(cov: pd.DataFrame) -> pd.DataFrame:
 def HRP(Sigma: np.ndarray, labels: list = None, method: str = 'single') -> tuple:
     """
     Algoritmo HRP (Hierarchical Risk Parity) - Marcos López de Prado (2016).
-    Sigma es una matriz de KxK componentes
+    Sigma es una matriz de KxK componentes (numpy array).
     """
+    K = Sigma.shape[0]
+
     if labels is None:
-        labels = list(range(Sigma.shape[0]))
+        labels = list(range(K))
 
     Sigma_df = pd.DataFrame(Sigma, index=labels, columns=labels)
-
+    corr_df = np.clip(getCorrMatrix(Sigma_df), -1.0, 1.0)
+    
     # Topología y Dendrograma (Single Linkage)
-    dist = correlDist(getCorrMatrix(Sigma_df))
+    dist = correlDist(corr_df)
     link = sch.linkage(ssd.squareform(dist, checks=False), method=method)
     
     # Cuasi-diagonalización
@@ -111,11 +114,15 @@ def HRP(Sigma: np.ndarray, labels: list = None, method: str = 'single') -> tuple
     w_series = w_series.reindex(labels, fill_value=0.0)
 
     # Normalización
-    W_HRP = w_series.values / w_series.values.sum()
+    w_sum = w_series.values.sum()
+    if w_sum > 0.0 and not np.isnan(w_sum):
+        W_HRP = w_series.values / w_sum
+    else:
+        W_HRP = np.zeros(K)
+        
     Sigma_quasidiag = Sigma_df.iloc[sort_ix, sort_ix]
     
     return W_HRP, link, Sigma_quasidiag
-
 
 def _get_leaves(link: np.ndarray, node: int, N: int) -> list:
     """
@@ -155,7 +162,7 @@ def HERC(Sigma: np.ndarray, labels: list = None) -> tuple:
     active_nodes = [root_node]
     node_weight = {root_node: 1.0}
 
-    # BUCLE DE CORTAFUEGOS: Cortamos el árbol basándonos en N_clusters, no en num_assets
+    # BUCLE DE CORTAFUEGOS: Cortamos el árbol basándonos en N_clusters
     for _ in range(N_clusters - 1):
         split_node = max(active_nodes)
         active_nodes.remove(split_node)
