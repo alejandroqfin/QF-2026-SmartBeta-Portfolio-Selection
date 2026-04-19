@@ -15,6 +15,9 @@ import numpy as np
 
 
 def plot_boxplots(df_metrics: pd.DataFrame):
+    """
+    Gráficos de caja boxplots)
+    """
     plt.rcParams['font.family'] = 'serif'
     fig, axes = plt.subplots(1, 3, figsize=(10, 5))
     metrics = ['Volatility', 'Skewness', 'Kurtosis']
@@ -47,7 +50,10 @@ def plot_boxplots(df_metrics: pd.DataFrame):
     plt.show()
 
 def plot_efficient_frontier(df_efficient_frontier, opt_sharpe, opt_vol, mean_returns, cov_matrix, risk_free_rate=0.0):
-    
+    """
+    Dibuja la frontera eficiente de Markowitz, 
+    destacando las carteras de Máximo Sharpe y Mínima Varianza.
+    """
     def get_metrics(w):
         return float(w.T @ mean_returns), float(np.sqrt(w.T @ cov_matrix @ w))
 
@@ -82,16 +88,14 @@ def plot_efficient_frontier(df_efficient_frontier, opt_sharpe, opt_vol, mean_ret
     plt.show()
     
 def plot_cumulative_returns(diccionario_riqueza: dict):
-    
+    """
+    Grafica la evolución temporal de los retornos acumulados (brutos y netos) 
+    para evaluar el impacto de los costes de transacción.
+    """
     items = list(diccionario_riqueza.items())
 
-    if len(items) <= 12:
-        cols, rows = 3, 4
-    else:
-        cols = 3
-        rows = math.ceil(len(items) / cols)
-    
-    fig, axes = plt.subplots(rows, cols, figsize=(18, 4.5 * rows), squeeze=False)
+    rows, cols = 4, 3
+    fig, axes = plt.subplots(rows, cols, figsize=(18, 18), squeeze=False)
     axes = axes.flatten()
 
     for idx, (subplot_title, values) in enumerate(items):
@@ -133,24 +137,19 @@ def plot_cumulative_returns(diccionario_riqueza: dict):
         
         ax.legend(fontsize=9, loc='lower left', frameon=False)
 
-    for idx in range(len(items), len(axes)):
-        axes[idx].set_visible(False)
-
     plt.tight_layout()
     plt.show(block=True)
 
 
 def plot_turnover_frequency(diccionario_frecuencia: dict, save_path: str = None):
-    
+    """
+    Crea histogramas de frecuencia para visualizar la rotación de activos 
+    (turnover) en los distintos periodos de rebalanceo.
+    """
     items = list(diccionario_frecuencia.items())
     
-    if len(items) <= 12:
-        cols, rows = 3, 4
-    else:
-        cols = 3
-        rows = math.ceil(len(items) / cols)
-
-    fig, axes = plt.subplots(rows, cols, figsize=(18, 4.5 * rows), squeeze=False)
+    rows, cols = 4, 3
+    fig, axes = plt.subplots(rows, cols, figsize=(18, 18), squeeze=False)
     axes = axes.flatten()
 
     for idx, (subplot_title, freq_series) in enumerate(items):
@@ -182,6 +181,10 @@ def plot_turnover_frequency(diccionario_frecuencia: dict, save_path: str = None)
 
 
 def plot_robustness_analysis(titulo: str, lineas: dict):
+    """
+    Superpone múltiples series temporales para ejecutar un análisis visual 
+    rápido de robustez del modelo.
+    """
     fig = plt.figure(figsize=(10, 6))
     ax = fig.add_subplot(111)
 
@@ -202,6 +205,10 @@ def plot_selection_spreads(
     ratios: list,
     benchmark: str = 'SR'
 ) -> dict:
+    """
+    Visualiza en una matriz de subplots los spreads de riqueza generados por distintos 
+    ratios de selección, aislando el rendimiento frente a un benchmark estandarizado.
+    """
     
     n_strats = len(perfiles)
     fig_spreads_by_base = {}
@@ -210,10 +217,8 @@ def plot_selection_spreads(
     cmap = plt.get_cmap(cmap_name)
     ratio_colors = [cmap(i) for i in range(len(ratios))]
 
-    cols = 2
-    rows = max(1, math.ceil(n_strats / cols))
-
-    fig, axes = plt.subplots(rows, cols, figsize=(14, 4.5 * rows))
+    rows, cols = 4, 3
+    fig, axes = plt.subplots(rows, cols, figsize=(18, 18))
     axes = axes.flatten()
 
     for i, base_strategy in enumerate(perfiles):
@@ -251,9 +256,6 @@ def plot_selection_spreads(
         ax.grid(axis='x', alpha=0.0)
         ax.legend(fontsize=9, loc='upper left', frameon=False)
 
-    for i in range(n_strats, len(axes)):
-        fig.delaxes(axes[i])
-
     plt.tight_layout()
 
     return fig_spreads_by_base
@@ -266,7 +268,10 @@ def plot_allocation_spreads(
     perfiles: list,
     benchmark: str = 'EW'
 ) -> dict:
-
+    """
+    Representa el diferencial de rentabilidad acumulada de múltiples estrategias de 
+    asignación algorítmica frente a una cartera de referencia (benchmark).
+    """
     n_ratios = len(ratios)
     fig_spreads_all = {}
 
@@ -274,13 +279,8 @@ def plot_allocation_spreads(
     cmap = plt.get_cmap(cmap_name)
     strat_colors = [cmap(i) for i in range(len(perfiles))]
 
-    if n_ratios == 12:
-        cols, rows = 4, 3
-    else:
-        cols = 3
-        rows = max(1, math.ceil(n_ratios / cols))
-
-    fig, axes = plt.subplots(rows, cols, figsize=(18, 4.5 * rows))
+    rows, cols = 4, 3
+    fig, axes = plt.subplots(rows, cols, figsize=(18, 18))
     axes = axes.flatten() if isinstance(axes, np.ndarray) else [axes]
 
     for idx, ratio in enumerate(ratios):
@@ -309,7 +309,6 @@ def plot_allocation_spreads(
         ax.set_title(f'Ratio: {ratio}', fontsize=12, fontweight='bold')
         ax.set_ylabel('Spread (EUR)', fontsize=10)
         
-        # Diseño minimalista y limpieza de fechas
         ax.xaxis.set_major_locator(ticker.MaxNLocator(5))
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
@@ -319,9 +318,6 @@ def plot_allocation_spreads(
         ax.grid(axis='y', linestyle='--', alpha=0.3)
         ax.grid(axis='x', alpha=0.0)
         ax.legend(fontsize=9, loc='lower left', frameon=False)
-
-    for i in range(n_ratios, len(axes)):
-        fig.delaxes(axes[i])
 
     plt.tight_layout()
 
@@ -334,7 +330,10 @@ def plot_mhi(
     ratios: list,
     perfiles: list,
 ) -> dict:
-
+    """
+    Evolución histórica del Modified Herfindahl Index (MHI) 
+    o riesgo de concentración estructural en las carteras.
+    """
     n_ratios = len(ratios)
     mhi_by_ratio_df = {}
 
@@ -342,13 +341,8 @@ def plot_mhi(
     cmap = plt.get_cmap(cmap_name)
     perfil_colors = [cmap(i) for i in range(len(perfiles))]
 
-    if n_ratios == 12:
-        cols, rows = 4, 3
-    else:
-        cols = 3
-        rows = max(1, math.ceil(n_ratios / cols))
-
-    fig, axes = plt.subplots(rows, cols, figsize=(18, 4.5 * rows), squeeze=False)
+    rows, cols = 4, 3
+    fig, axes = plt.subplots(rows, cols, figsize=(18, 18))
     axes = axes.flatten() if isinstance(axes, np.ndarray) else [axes]
 
     for idx, ratio in enumerate(ratios):
@@ -382,16 +376,13 @@ def plot_mhi(
         ax.grid(axis='x', alpha=0.0)
         ax.legend(fontsize=9, loc='lower left', frameon=False)
 
-    for idx in range(n_ratios, len(axes)):
-        fig.delaxes(axes[idx])
-
     plt.tight_layout()
 
     return mhi_by_ratio_df
 
 def plot_dendrogram(link: np.ndarray, labels: list, title: str):
     """
-    Dibuja el dendrograma jerárquico.
+    Dibuja el dendrograma jerárquico derivado de un análisis de clustering (link).
     """
     plt.rcParams['font.family'] = 'serif'
     fig, ax = plt.subplots(figsize=(10, 5))
@@ -405,9 +396,7 @@ def plot_dendrogram(link: np.ndarray, labels: list, title: str):
         above_threshold_color='black'
     )
 
-    # El título ahora es dinámico y depende de lo que le inyectes al llamar a la función
     ax.set_title(title, fontsize=14, fontweight='bold', pad=15)
-    
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.grid(False)
@@ -425,7 +414,6 @@ def plot_matrix_heatmap(matrix: pd.DataFrame, title: str):
     plt.title(title)
     plt.tight_layout()
     plt.show()
-
 
 def plot_correlation_heatmap(corr: pd.DataFrame, title: str):
     plot_matrix_heatmap(corr, title)

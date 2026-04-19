@@ -20,7 +20,7 @@ VARIABLES_FILE = "screening_artifacts.joblib"
 VERTICAL_DATE = pd.to_datetime("2024-12-19")
 
 # RANKINGS DE SELECCIÓN (Top K por ratio) Y PERFILES DE PESOS
-ratios = ['SR', 'SR_Correlation', 'MSR', 'VaRR1', 'VaRR5', 'VaRR10', 'Omega', 'UPR', 'Kappa3', 'Sortino', 'GR1', 'GR5']
+ratios = ['SR', 'SR_corr', 'MSR', 'VaRR1', 'VaRR5', 'VaRR10', 'Omega', 'UPR', 'Kappa3', 'Sortino', 'GR1', 'GR5']
 perfiles = ['EW', 'VT', 'RRT', 'GMV', 'ERC', 'MVS', 'HRP', 'HERC']
 
 # RECUPERAMOS VARIABLES
@@ -297,7 +297,7 @@ selection_spreads_vs_sr_benchmark = plot_selection_spreads(diccionario_riqueza=r
 # II) QUÉ CARTERA DISTRIBUYE MEJOR EL CAPITAL?
 allocation_spreads_vs_ew_benchmark = plot_allocation_spreads(diccionario_riqueza=riqueza_oos_por_ratio, fechas_oos=T, ratios=ratios, perfiles=perfiles)
 
-# GRÁFICO ÍNDICE DE HERFINDAHL
+# III) EVOLUCIÓN DEL ÍNDICE DE HERFINDAHL (MHI)
 mhi_spreads_by_ratio = plot_mhi(mhi_history=mhi_history, fechas_oos=T, ratios=ratios, perfiles=perfiles)
 
 # RESUMEN FINAL: PERFORMANCE DE TODAS LAS ESTRATEGIAS
@@ -306,11 +306,9 @@ for ratio, wealth_df in riqueza_oos_por_ratio.items():
     final_row = wealth_df.iloc[-1]
     for allocation_strategy in wealth_df.columns:
         
-        # Extraemos la serie de riqueza temporal completa y calculamos el MDD
         riqueza_serie = wealth_df[allocation_strategy]
         maxDD = maxDrawDown(riqueza_serie)
         
-        # Extraemos el Sharpe Ratio de la tabla de resultados_oos precalculada
         clave_resultados = f"{ratio}_{allocation_strategy}"
         sharpe_val = resultados_oos.loc[clave_resultados, 'Sharpe Ratio Anualizado']
         
@@ -329,7 +327,6 @@ print("\nRebalanceo medio diario (Costes de transacción):")
 print()
 for ratio in ratios:
     print(f"   • {ratio:<10}: {rotation_mean[ratio]:.4f} ETFs/día")
-
 
 print("\n [ 1. RENTABILIDAD ABSOLUTA (RIQUEZA ACUMULADA) ]")
 
