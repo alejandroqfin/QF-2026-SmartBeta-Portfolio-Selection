@@ -137,18 +137,35 @@ w_HERC, links_vertical_HERC, Sigma_quasidiag_HERC = HERC(Sigma, labels=etfs_vert
 plot_dendrogram(
     links_vertical_HRP, 
     labels=etfs_vertical, 
-    title="HRP - Dendrograma de ETFs (Single Linkage)")
+    title="HRP - Dendrograma de ETFs (Single Linkage)",
+    save_path="dendrograma_HRP.pdf"
+)
 
 plot_dendrogram(
     links_vertical_HERC, 
     labels=etfs_vertical, 
-    title="HERC - Dendrograma de ETFs (Ward Linkage)")
+    title="HERC - Dendrograma de ETFs (Ward Linkage)",
+    save_path="dendrograma_HERC.pdf"
+)
 
 # HEATMAPS DE COVARIANZAS
-plot_matrix_heatmap(pd.DataFrame(Sigma, index=etfs_vertical, columns=etfs_vertical), title=f'Heatmap Covarianzas ({ratio_vertical}) - Original')
-plot_matrix_heatmap(Sigma_quasidiag_HRP, title=f'Heatmap Covarianzas Cuasidiagonalizada ({ratio_vertical}) - HRP')
-plot_matrix_heatmap(Sigma_quasidiag_HERC, title=f'Heatmap Covarianzas Cuasidiagonalizada ({ratio_vertical}) - HERC')
+plot_matrix_heatmap(
+    pd.DataFrame(Sigma, index=etfs_vertical, columns=etfs_vertical), 
+    title=f'Heatmap Covarianzas ({ratio_vertical}) - Original',
+    save_path="heatmap_cov_original.pdf"
+)
 
+plot_matrix_heatmap(
+    Sigma_quasidiag_HRP, 
+    title=f'Heatmap Covarianzas Cuasidiagonalizada ({ratio_vertical}) - HRP',
+    save_path="heatmap_cov_HRP.pdf"
+)
+
+plot_matrix_heatmap(
+    Sigma_quasidiag_HERC, 
+    title=f'Heatmap Covarianzas Cuasidiagonalizada ({ratio_vertical}) - HERC',
+    save_path="heatmap_cov_HERC.pdf"
+)
 print(f"\nTop {K} ETFs del día {VERTICAL_DATE.date()} según el ratio {ratio_vertical}: {etfs_vertical}")
     
 # PESOS (w)

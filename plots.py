@@ -219,7 +219,7 @@ def plot_mhi(mhi_history, fechas_oos, ratios, perfiles):
     plt.savefig("mhi_evolution.pdf", format='pdf', bbox_inches='tight', transparent=True)
     return {}
 
-def plot_dendrogram(link: np.ndarray, labels: list, title: str):
+def plot_dendrogram(link: np.ndarray, labels: list, title: str, save_path: str = "dendrogram.pdf"):
     set_latex_style()
     fig, ax = plt.subplots(figsize=(10, 5))
     sch.dendrogram(link, labels=labels, leaf_rotation=90, ax=ax, color_threshold=0, above_threshold_color='black')
@@ -228,10 +228,10 @@ def plot_dendrogram(link: np.ndarray, labels: list, title: str):
     ax.spines['right'].set_visible(False)
     
     plt.tight_layout()
-    plt.savefig("dendrogram.pdf", format='pdf', bbox_inches='tight', transparent=True)
+    plt.savefig(save_path, format='pdf', bbox_inches='tight', transparent=True)
     plt.show()
 
-def plot_matrix_heatmap(matrix: pd.DataFrame, title: str):
+def plot_matrix_heatmap(matrix: pd.DataFrame, title: str, save_path: str = "matrix_heatmap.pdf"):
     set_latex_style()
     plt.figure(figsize=(8, 6))
     plt.pcolor(matrix, cmap='jet')
@@ -240,7 +240,7 @@ def plot_matrix_heatmap(matrix: pd.DataFrame, title: str):
     plt.xticks(np.arange(0.5, matrix.shape[1] + 0.5), matrix.columns, rotation=90)
     plt.title(title)
     plt.tight_layout()
-    plt.savefig("matrix_heatmap.pdf", format='pdf', bbox_inches='tight', transparent=True)
+    plt.savefig(save_path, format='pdf', bbox_inches='tight', transparent=True)
     plt.show()
 
 def plot_coincidence_heatmap(matrix: pd.DataFrame, save_path: str = "coincidence_heatmap.pdf"):
