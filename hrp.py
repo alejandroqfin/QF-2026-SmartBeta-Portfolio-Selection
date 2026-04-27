@@ -87,8 +87,8 @@ def getRecBipart(cov: pd.DataFrame, sortIx: list) -> pd.Series:
             denom = cVar0 + cVar1
             alpha = 0.5 if denom <= 1e-16 else 1.0 - cVar0 / denom
             
-            w.iloc[cItems0] *= alpha
-            w.iloc[cItems1] *= (1.0 - alpha)
+            w.loc[cItems0] *= alpha
+            w.loc[cItems1] *= (1.0 - alpha)
     return w
 
 
@@ -151,7 +151,7 @@ def HRP(Sigma: np.ndarray, labels: list = None) -> tuple:
 
     # 4. Bisección Recursiva para el reparto del capital
     w_series = getRecBipart(Sigma_df, sort_ix)
-    w_series = w_series.reindex(labels, fill_value=0.0)
+    w_series = w_series.sort_index()
 
     # 5. Normalización de pesos
     w_sum = w_series.values.sum()

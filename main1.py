@@ -10,8 +10,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import joblib
 from screening import ROLLING_WINDOW_RANKINGS
-from metrics import etf_stats, replacement_rate, transaction_costs
-from plots import plot_cumulative_returns, plot_turnover_frequency
+from metrics import etf_stats, replacement_rate, transaction_costs, coincident_assets_median
+from plots import plot_cumulative_returns, plot_turnover_frequency, plot_coincidence_heatmap, plot_survival_heatmap
+from portfolios import W_EW
 
 INPUT_FILE = "100_ETFs_Smart_Beta.xlsx"
 OUTPUT_FILE = "100_ETFs_Screening.xlsx"
@@ -109,6 +110,8 @@ serie_GR5_oos = series_oos['GR5']
 # PERIODO OUT OF SAMPLE (T)
 T = df_rendimientos.index[df_rendimientos.index >= OOS_START_DATE]
 t = ranking_SR_oos.index.get_indexer(T)
+
+# LOS ACTIVOS SELECCIONADOS PARA GENERAR EL RENDIMIENTO DE HOY (t) SON LOS SELECCIONADOS AYER (t-1)
 t_anterior = np.maximum(0, t - 1)
 
 # MATRICES DE IDS SELECCIONADOS: (T X K)

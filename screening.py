@@ -195,8 +195,6 @@ def ROLLING_WINDOW_RANKINGS(
                                  temporales de la métrica para cada activo.
    """
     oos_start_date = pd.to_datetime(oos_start_date)
-    
-    # En qué fila exacta del histórico empieza nuestra simulación
     start_idx = int(df_returns.index.searchsorted(oos_start_date))
     
     # Las fechas de nuestros rankings (empezamos un día antes para invertir hoy)
@@ -216,7 +214,7 @@ def ROLLING_WINDOW_RANKINGS(
         for ratio in ratios_list:
             if ratio == 'SR':
                 score = SHARPE_RATIO(window_matrix, rf=0.0)
-            elif ratio == 'SR_Correlation':
+            elif ratio == 'SR_corr':
                 score = SHARPE_RATIO_CORR(window_matrix, rf=0.0)
             elif ratio == 'MSR':
                 score = MSR(window_matrix, rf=0.0)

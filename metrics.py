@@ -419,3 +419,16 @@ def maxDrawDown(wealth_series: pd.Series) -> float:
     # 3. Peor caída registrada
     return float(drawdowns.min())
 
+def coincident_assets_median(ids_A, ids_B, K):
+    """
+    Coincidencia entre universos de inversión.
+    Calcula cuántos activos comparten dos carteras en cada instante t y extrae la mediana.
+    Sin tener en cuenta la posición en el ranking.
+    """
+    # Broadcasting: (T x K x 1) == (T x 1 x K) -> (T x K x K)
+    match_matrix = (ids_A[:, :, np.newaxis] == ids_B[:, np.newaxis, :])
+    
+    # Sumamos coincidencias por día y calculamos el % sobre K
+    coincidencia_t = np.sum(match_matrix, axis=(1, 2)) / K
+    return np.median(coincidencia_t) * 100
+

@@ -69,8 +69,8 @@ print(f"  • NaNs:                     {pct_nulos:.4f} %")
 # MATRICES DE RANKINGS (T x K), UNA POR CADA RATIO
 # COMPARAMOS N ESTRATEGIAS DISTINTAS DE INVERSIÓN (12 RATIOS x 8 PERFILES)
 print("\nCalculando rendimientos out-of-sample para todas las carteras.")
-print(f"Costes de transaccion: {c * 10000:.1f} bps")
 print(f"\nRatios de selección ({len(ratios)}): {', '.join(ratios)}")
+print(f"\nPerfiles de pesos ({len(perfiles)}): {', '.join(perfiles)}")
 
 # 8 PERFILES DE PESOS (w)
 perfiles_de_pesos = [('EW', W_EW), ('VT', W_VT), ('RRT', W_RRT), ('GMV', W_GMV), ('ERC', W_ERC), ('MVS', W_MVS), ('HRP', W_HRP), ('HERC', W_HERC)]

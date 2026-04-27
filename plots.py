@@ -107,7 +107,7 @@ def plot_cumulative_returns(diccionario_riqueza: dict):
     plt.savefig("cumulative_spread_returns.pdf", format='pdf', bbox_inches='tight', transparent=True)
     plt.show()
 
-def plot_turnover_frequency(diccionario_frecuencia: dict):
+def plot_turnover_frequency(diccionario_frecuencia: dict, save_path: str = "turnover_frequency.pdf"):
     set_latex_style()
     fig, axes = plt.subplots(4, 3, figsize=(12, 14))
     axes = axes.flatten()
@@ -129,7 +129,7 @@ def plot_turnover_frequency(diccionario_frecuencia: dict):
         ax.spines['right'].set_visible(False)
 
     plt.tight_layout(pad=3.0)
-    plt.savefig("turnover_frequency.pdf", format='pdf', bbox_inches='tight', transparent=True)
+    plt.savefig(save_path, format='pdf', bbox_inches='tight', transparent=True)
     plt.show()
 
 def plot_robustness_analysis(titulo: str, lineas: dict):
@@ -151,8 +151,9 @@ def plot_robustness_analysis(titulo: str, lineas: dict):
 def plot_selection_spreads(diccionario_riqueza, fechas_oos, perfiles, ratios, benchmark='SR'):
     set_latex_style()
     cmap = plt.get_cmap('tab20')
-    rows, cols = 4, 3
-    fig, axes = plt.subplots(rows, cols, figsize=(18, 18))
+    
+    rows, cols = 4, 2
+    fig, axes = plt.subplots(rows, cols, figsize=(14, 18))
     axes = axes.flatten()
 
     for i, base_strategy in enumerate(perfiles):
@@ -242,14 +243,14 @@ def plot_matrix_heatmap(matrix: pd.DataFrame, title: str):
     plt.savefig("matrix_heatmap.pdf", format='pdf', bbox_inches='tight', transparent=True)
     plt.show()
 
-def plot_coincidence_heatmap(matrix: pd.DataFrame):
+def plot_coincidence_heatmap(matrix: pd.DataFrame, save_path: str = "coincidence_heatmap.pdf"):
     set_latex_style()
     fig, ax = plt.subplots(figsize=(10, 8))
     sns.heatmap(matrix, annot=True, fmt=".0f", cmap=sns.light_palette("#1f77b4", as_cmap=True),
                 vmin=0, vmax=100, cbar_kws={"label": "Coincidencia (%)"}, square=True, ax=ax)
     plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
-    plt.savefig("coincidence_heatmap.pdf", format='pdf', bbox_inches='tight', transparent=True)
+    plt.savefig(save_path, format='pdf', bbox_inches='tight', transparent=True)
     plt.show()
 
 def plot_survival_heatmap(all_stats_dict):
