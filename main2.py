@@ -42,17 +42,29 @@ rotation_mean = variables['rotation_mean']
 t_indices = df_rendimientos.index.searchsorted(T)
 
 # DATOS
-print("\nDatos:")
-print(f"   • Universo de ETFs:            {len(tickers)}")
-print(f"   • ETFs en cartera:             {K}")
-print(f"   • Días totales:                {len(df_rendimientos)}")
-print(f"   • Días IS:                     {len(df_rendimientos[df_rendimientos.index < OOS_START_DATE])}")
-print(f"   • Días OOS:                    {len(T)}")
-print(f"   • Tamaño de la ventana IS:     {M} días")
-print(f"   • Fecha inicial:               {df_rendimientos.index.min().date()}")
-print(f"   • Fecha final:                 {df_rendimientos.index.max().date()}")
-print(f"   • Fecha inicial OOS:           {T.min().date()}")
-print(f"   • NaNs (%):                    {100.0 * df_rendimientos.isna().sum().sum() / df_rendimientos.size:.4f}")
+dias_totales = len(df_rendimientos)
+dias_is = len(df_rendimientos[df_rendimientos.index < OOS_START_DATE])
+dias_oos = len(T)
+pct_nulos = 100.0 * df_rendimientos.isna().sum().sum() / df_rendimientos.size
+
+print(" DATOS")
+
+print("\n Configuración de la Cartera ")
+print(f"  • Universo de ETFs (N):     {len(tickers)}")
+print(f"  • Objetivo en cartera (K):  {K}")
+print(f"  • Costes de transacc. (c):  {c}")
+
+print("\n Horizonte Temporal ")
+print(f"  • Fecha inicial global:     {df_rendimientos.index.min().date()}")
+print(f"  • Fecha inicio OOS:         {OOS_START_DATE.date()}")
+print(f"  • Fecha final global:       {df_rendimientos.index.max().date()}")
+
+print("\n Muestra ")
+print(f"  • Días totales:             {dias_totales}")
+print(f"  • Días In-Sample (IS):      {dias_is}")
+print(f"  • Días Out-of-Sample (OOS): {dias_oos}")
+print(f"  • Tamaño de Ventana IS (M): {M} días")
+print(f"  • NaNs:                     {pct_nulos:.4f} %")
 
 # MATRICES DE RANKINGS (T x K), UNA POR CADA RATIO
 # COMPARAMOS N ESTRATEGIAS DISTINTAS DE INVERSIÓN (12 RATIOS x 8 PERFILES)
@@ -88,7 +100,8 @@ for ratio in ratios:
         rendimientos_oos[ratio][perfil] = r_neto   # 12 x 8 x (T x 1)
         riqueza_oos[ratio][perfil] = riq_neta      # 12 x 8 x (T x 1)
 
-    # CREAMOS MATRICES DE RENDIMIENTOS OOS POR RATIO: 12 x (T x 8)
+    
+# CREAMOS MATRICES DE RENDIMIENTOS OOS POR RATIO: 12 x (T x 8)
 rendimientos_oos_por_ratio = {}
 for ratio in ratios:
     rendimientos_oos_por_ratio[ratio] = pd.DataFrame(

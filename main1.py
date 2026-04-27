@@ -1,4 +1,4 @@
-﻿"""
+"""
 main1.py
 PARTE I: ROLLING WINDOW RANKINGS (SELECCIÓN DINÁMICA DE CARTERAS)
 Smart Beta ETF Universe - TFM
@@ -24,6 +24,9 @@ K = 20
 # VENTANA IN SAMPLE
 M = 1000
 
+# COSTES DE TRANSACCIÓN
+c = 0.0020
+
 # EXTRAEMOS PRECIOS (P_T): (M + T X 100)
 df_precios = pd.read_excel(INPUT_FILE, sheet_name='Precios_Historicos', index_col=0, header=1)
 df_precios = df_precios.iloc[1:]
@@ -45,23 +48,37 @@ df_ID = pd.DataFrame({
 })
 
 # DATOS
-print("\nDatos:")
-print(f"   • Universo de ETFs:            {len(tickers)}")
-print(f"   • ETFs en cartera:             {K}")
-print(f"   • Días totales:                {len(df_rendimientos)}")
-print(f"   • Días IS:                     {len(df_rendimientos[df_rendimientos.index < OOS_START_DATE])}")
-print(f"   • Días OOS:                    {len(df_rendimientos[df_rendimientos.index >= OOS_START_DATE])}")
-print(f"   • Tamaño de la ventana IS:     {M} días")
-print(f"   • Fecha inicial:               {df_rendimientos.index.min().date()}")
-print(f"   • Fecha final:                 {df_rendimientos.index.max().date()}")
-print(f"   • Fecha inicial OOS:           {OOS_START_DATE.date()}")
-print(f"   • NaNs (%):                    {100.0 * df_rendimientos.isna().sum().sum() / df_rendimientos.size:.4f}")
+dias_totales = len(df_rendimientos)
+dias_is = len(df_rendimientos[df_rendimientos.index < OOS_START_DATE])
+dias_oos = len(df_rendimientos[df_rendimientos.index >= OOS_START_DATE])
+pct_nulos = 100.0 * df_rendimientos.isna().sum().sum() / df_rendimientos.size
 
-# PARTE 1: ROLLING WINDOW
+print(" DATOS")
+
+print("\n Configuración de la Cartera ")
+print(f"  • Universo de ETFs (N):     {len(tickers)}")
+print(f"  • Objetivo en cartera (K):  {K}")
+print(f"  • Costes de transacc. (c):  {c}")
+
+print("\n Horizonte Temporal ")
+print(f"  • Fecha inicial global:     {df_rendimientos.index.min().date()}")
+print(f"  • Fecha inicio OOS:         {OOS_START_DATE.date()}")
+print(f"  • Fecha final global:       {df_rendimientos.index.max().date()}")
+
+print("\n Muestra ")
+print(f"  • Días totales:             {dias_totales}")
+print(f"  • Días In-Sample (IS):      {dias_is}")
+print(f"  • Días Out-of-Sample (OOS): {dias_oos}")
+print(f"  • Tamaño de Ventana IS (M): {M} días")
+print(f"  • NaNs:                     {pct_nulos:.4f} %")
+
+# PARTE I: SIMULACIÓN DE RANKINGS - ROLLING WINDOW (M = 1000 DÍAS)
+
+# SIMULACIÓN
 ratios = ['SR', 'SR_corr', 'MSR', 'VaRR1', 'VaRR5', 'VaRR10', 'Omega', 'UPR', 'Kappa3', 'Sortino', 'GR1', 'GR5']
 rankings_oos, series_oos = ROLLING_WINDOW_RANKINGS(df_rendimientos, OOS_START_DATE, K, ratios, M=M)
 
-# RANKINGS OOS (FECHAS DESDE OOS_START_DATE HASTA EL FINAL)2
+# RANKINGS OOS (FECHAS DESDE OOS_START_DATE HASTA EL FINAL)
 ranking_SR_oos = rankings_oos['SR']
 ranking_SR_corr_oos = rankings_oos['SR_corr']
 ranking_MSR_oos = rankings_oos['MSR']
@@ -89,11 +106,6 @@ serie_Sortino_oos = series_oos['Sortino']
 serie_GR1_oos = series_oos['GR1']
 serie_GR5_oos = series_oos['GR5']
 
-# PARTE 2: COMPARACIÓN ENTRE CARTERAS
-# VECTOR DE PESOS EQUIPONDERADOS
-w = np.full(K, 1 / K)
-
-# 2A. SIMULACIÓN DE CARTERA ROLLING (DINÁMICA)
 # PERIODO OUT OF SAMPLE (T)
 T = df_rendimientos.index[df_rendimientos.index >= OOS_START_DATE]
 t = ranking_SR_oos.index.get_indexer(T)
@@ -113,123 +125,46 @@ ids_rolling_Sortino = (ranking_Sortino_oos.iloc[t_anterior].values - 1).astype(i
 ids_rolling_GR1 = (ranking_GR1_oos.iloc[t_anterior].values - 1).astype(int)
 ids_rolling_GR5 = (ranking_GR5_oos.iloc[t_anterior].values - 1).astype(int)
 
-# EXTRAEMOS LA SUBMATRIZ DE RENDIMIENTOS OOS: (T X 100)
-R_oos = df_rendimientos.loc[T].values
+print("\n FASE 1: ANÁLISIS DE COINCIDENCIA DE ACTIVOS (MEDIANA HISTÓRICA %)")
 
-# VECTOR COLUMNA (T X 1) DE TIEMPO, DESDE 0 HASTA T-1
-t_oos = np.arange(len(T))[:, None]
+ranking_ids = {
+    'SR': ids_rolling_SR,
+    'SR_corr': ids_rolling_SR_corr,
+    'MSR': ids_rolling_MSR,
+    'VaRR1': ids_rolling_VaRR1,
+    'VaRR5': ids_rolling_VaRR5,
+    'VaRR10': ids_rolling_VaRR10,
+    'Omega': ids_rolling_Omega,
+    'UPR': ids_rolling_UPR,
+    'Kappa3': ids_rolling_Kappa3,
+    'Sortino': ids_rolling_Sortino,
+    'GR1': ids_rolling_GR1,
+    'GR5': ids_rolling_GR5
+}
 
-# RENDIMIENTOS INDIVIDUALES DE LOS K MEJORES ETFS PARA CADA T
-# SUBMATRIZ: (T X K)
-R_rolling_SR = R_oos[t_oos, ids_rolling_SR]
-R_rolling_SR_corr = R_oos[t_oos, ids_rolling_SR_corr]
-R_rolling_MSR = R_oos[t_oos, ids_rolling_MSR]
-R_rolling_VaRR1 = R_oos[t_oos, ids_rolling_VaRR1]
-R_rolling_VaRR5 = R_oos[t_oos, ids_rolling_VaRR5]
-R_rolling_VaRR10 = R_oos[t_oos, ids_rolling_VaRR10]
-R_rolling_Omega = R_oos[t_oos, ids_rolling_Omega]
-R_rolling_UPR = R_oos[t_oos, ids_rolling_UPR]
-R_rolling_Kappa3 = R_oos[t_oos, ids_rolling_Kappa3]
-R_rolling_Sortino = R_oos[t_oos, ids_rolling_Sortino]
-R_rolling_GR1 = R_oos[t_oos, ids_rolling_GR1]
-R_rolling_GR5 = R_oos[t_oos, ids_rolling_GR5]
+ratios_list = list(ranking_ids.keys())
+coincidence_matrix = pd.DataFrame(index=ratios_list, columns=ratios_list, dtype=float)
 
-# RENDIMIENTOS DE LAS CARTERAS ROLLING EQUIPONDERADAS
-# PRODUCTO MATRICIAL (SUMATORIO): R_P = R_I @ W
-# DIMENSIONES: (T X 1) = (T X K) @ (K X 1)
-R_cartera_SR = pd.Series(R_rolling_SR @ w, index=T)
-R_cartera_SR_corr = pd.Series(R_rolling_SR_corr @ w, index=T)
-R_cartera_MSR = pd.Series(R_rolling_MSR @ w, index=T)
-R_cartera_VaRR1 = pd.Series(R_rolling_VaRR1 @ w, index=T)
-R_cartera_VaRR5 = pd.Series(R_rolling_VaRR5 @ w, index=T)
-R_cartera_VaRR10 = pd.Series(R_rolling_VaRR10 @ w, index=T)
-R_cartera_Omega = pd.Series(R_rolling_Omega @ w, index=T)
-R_cartera_UPR = pd.Series(R_rolling_UPR @ w, index=T)
-R_cartera_Kappa3 = pd.Series(R_rolling_Kappa3 @ w, index=T)
-R_cartera_Sortino = pd.Series(R_rolling_Sortino @ w, index=T)
-R_cartera_GR1 = pd.Series(R_rolling_GR1 @ w, index=T)
-R_cartera_GR5 = pd.Series(R_rolling_GR5 @ w, index=T)
+for r1 in ratios_list:
+    for r2 in ratios_list:
+        if r1 == r2:
+            coincidence_matrix.loc[r1, r2] = 100.0
+        else:
+            med_coinc = coincident_assets_median(ranking_ids[r1], ranking_ids[r2], K)
+            coincidence_matrix.loc[r1, r2] = np.round(med_coinc, 2)
 
-# INVERSIÓN INICIAL DE 1€ 
-W0 = 1
+print("\nMatriz Mediana de Coincidencia de Activos (%):")
+print(coincidence_matrix.to_string())
 
-# RIQUEZA ACUMULADA DE LA CARTERA ROLLING (PRODUCTORIO): 
-# WT = W0 PROD(1 + RP,T) DESDE T=1 HASTA T
-wealth_rolling_SR = W0 * (1 + R_cartera_SR).cumprod()
-wealth_rolling_SR_corr = W0 * (1 + R_cartera_SR_corr).cumprod()
-wealth_rolling_MSR = W0 * (1 + R_cartera_MSR).cumprod()
-wealth_rolling_VaRR1 = W0 * (1 + R_cartera_VaRR1).cumprod()
-wealth_rolling_VaRR5 = W0 * (1 + R_cartera_VaRR5).cumprod()
-wealth_rolling_VaRR10 = W0 * (1 + R_cartera_VaRR10).cumprod()
-wealth_rolling_Omega = W0 * (1 + R_cartera_Omega).cumprod()
-wealth_rolling_UPR = W0 * (1 + R_cartera_UPR).cumprod()
-wealth_rolling_Kappa3 = W0 * (1 + R_cartera_Kappa3).cumprod()
-wealth_rolling_Sortino = W0 * (1 + R_cartera_Sortino).cumprod()
-wealth_rolling_GR1 = W0 * (1 + R_cartera_GR1).cumprod()
-wealth_rolling_GR5 = W0 * (1 + R_cartera_GR5).cumprod()
+plot_coincidence_heatmap(
+    coincidence_matrix, 
+    save_path="heatmap_coincidencia_fase1.pdf"
+)
 
-# 2B. CARTERA BUY & HOLD PURA
-# SOLO INVERTIMOS EN T = 0 Y NO INTERVENIMOS MÁS
-t0 = ranking_SR_oos.index[ranking_SR_oos.index < OOS_START_DATE][-1]
 
-# K MEJORES ETFS EN T=0 (Y LOS CONGELAMOS): (1 X K)
-ids_buyhold_SR = ranking_SR_oos.loc[t0].values
-ids_buyhold_SR_corr = ranking_SR_corr_oos.loc[t0].values
-ids_buyhold_MSR = ranking_MSR_oos.loc[t0].values
-ids_buyhold_VaRR1 = ranking_VaRR1_oos.loc[t0].values
-ids_buyhold_VaRR5 = ranking_VaRR5_oos.loc[t0].values
-ids_buyhold_VaRR10 = ranking_VaRR10_oos.loc[t0].values
-ids_buyhold_Omega = ranking_Omega_oos.loc[t0].values
-ids_buyhold_UPR = ranking_UPR_oos.loc[t0].values
-ids_buyhold_Kappa3 = ranking_Kappa3_oos.loc[t0].values
-ids_buyhold_Sortino = ranking_Sortino_oos.loc[t0].values
-ids_buyhold_GR1 = ranking_GR1_oos.loc[t0].values
-ids_buyhold_GR5 = ranking_GR5_oos.loc[t0].values
+# PARTE II: ANÁLISIS DEL REBALANCEO
 
-# MATRIZ DE RENDIMIENTOS OOS DE LOS ETFS SELECCIONADOS POR LA B&H: (T X K)
-R_buyhold_SR = df_rendimientos.loc[T, ids_buyhold_SR]
-R_buyhold_SR_corr = df_rendimientos.loc[T, ids_buyhold_SR_corr]
-R_buyhold_MSR = df_rendimientos.loc[T, ids_buyhold_MSR]
-R_buyhold_VaRR1 = df_rendimientos.loc[T, ids_buyhold_VaRR1]
-R_buyhold_VaRR5 = df_rendimientos.loc[T, ids_buyhold_VaRR5]
-R_buyhold_VaRR10 = df_rendimientos.loc[T, ids_buyhold_VaRR10]
-R_buyhold_Omega = df_rendimientos.loc[T, ids_buyhold_Omega]
-R_buyhold_UPR = df_rendimientos.loc[T, ids_buyhold_UPR]
-R_buyhold_Kappa3 = df_rendimientos.loc[T, ids_buyhold_Kappa3]
-R_buyhold_Sortino = df_rendimientos.loc[T, ids_buyhold_Sortino]
-R_buyhold_GR1 = df_rendimientos.loc[T, ids_buyhold_GR1]
-R_buyhold_GR5 = df_rendimientos.loc[T, ids_buyhold_GR5]
-
-# RIQUEZA ACUMULADA (T X K)
-etf_wealth_buyhold_SR = W0 * (1 + R_buyhold_SR).cumprod()
-etf_wealth_buyhold_SR_corr = W0 * (1 + R_buyhold_SR_corr).cumprod()
-etf_wealth_buyhold_MSR = W0 * (1 + R_buyhold_MSR).cumprod()
-etf_wealth_buyhold_VaRR1 = W0 * (1 + R_buyhold_VaRR1).cumprod()
-etf_wealth_buyhold_VaRR5 = W0 * (1 + R_buyhold_VaRR5).cumprod() 
-etf_wealth_buyhold_VaRR10 = W0 * (1 + R_buyhold_VaRR10).cumprod()
-etf_wealth_buyhold_Omega = W0 * (1 + R_buyhold_Omega).cumprod()
-etf_wealth_buyhold_UPR = W0 * (1 + R_buyhold_UPR).cumprod()
-etf_wealth_buyhold_Kappa3 = W0 * (1 + R_buyhold_Kappa3).cumprod()
-etf_wealth_buyhold_Sortino = W0 * (1 + R_buyhold_Sortino).cumprod()
-etf_wealth_buyhold_GR1 = W0 * (1 + R_buyhold_GR1).cumprod()
-etf_wealth_buyhold_GR5 = W0 * (1 + R_buyhold_GR5).cumprod()
-
-# SUMA PONDERADA DE LA RIQUEZA PATRIMONIAL POR ETF
-# DIMENSIONES: (T X K) @ (K X 1) = (T X 1)
-wealth_buyhold_SR = pd.Series(etf_wealth_buyhold_SR.values @ w, index=T)
-wealth_buyhold_SR_corr = pd.Series(etf_wealth_buyhold_SR_corr.values @ w, index=T)
-wealth_buyhold_MSR = pd.Series(etf_wealth_buyhold_MSR.values @ w, index=T)
-wealth_buyhold_VaRR1 = pd.Series(etf_wealth_buyhold_VaRR1.values @ w, index=T)
-wealth_buyhold_VaRR5 = pd.Series(etf_wealth_buyhold_VaRR5.values @ w, index=T)
-wealth_buyhold_VaRR10 = pd.Series(etf_wealth_buyhold_VaRR10.values @ w, index=T)
-wealth_buyhold_Omega = pd.Series(etf_wealth_buyhold_Omega.values @ w, index=T)
-wealth_buyhold_UPR = pd.Series(etf_wealth_buyhold_UPR.values @ w, index=T)
-wealth_buyhold_Kappa3 = pd.Series(etf_wealth_buyhold_Kappa3.values @ w, index=T)
-wealth_buyhold_Sortino = pd.Series(etf_wealth_buyhold_Sortino.values @ w, index=T)
-wealth_buyhold_GR1 = pd.Series(etf_wealth_buyhold_GR1.values @ w, index=T)
-wealth_buyhold_GR5 = pd.Series(etf_wealth_buyhold_GR5.values @ w, index=T)
-
-# PARTE 3: CALCULAMOS EL NÚMERO DE ETFS QUE ENTRAN CADA DÍA A LA CARTERA
+# CALCULAMOS EL NÚMERO DE ETFS QUE ENTRAN CADA DÍA A LA CARTERA
 replacement_rate_SR, freq_SR = replacement_rate(ranking_SR_oos, T, return_frequency=True)
 replacement_rate_SR_corr, freq_SR_corr = replacement_rate(ranking_SR_corr_oos, T, return_frequency=True)
 replacement_rate_MSR, freq_MSR = replacement_rate(ranking_MSR_oos, T, return_frequency=True)
@@ -260,18 +195,18 @@ df_turnover_activos = pd.DataFrame({
 })
 
 print("\nTasa de rebalanceo diaria de ETFs:")
-print(f"   • Sharpe              : {df_turnover_activos['Nuevos_SR'].mean():.4f} de {K} ETFs por día")
-print(f"   • Sharpe Correlation  : {df_turnover_activos['Nuevos_SR_corr'].mean():.4f} de {K} ETFs por día")
-print(f"   • MSR                 : {df_turnover_activos['Nuevos_MSR'].mean():.4f} de {K} ETFs por día")
-print(f"   • VaRR1               : {df_turnover_activos['Nuevos_VaRR1'].mean():.4f} de {K} ETFs por día")
-print(f"   • VaRR5               : {df_turnover_activos['Nuevos_VaRR5'].mean():.4f} de {K} ETFs por día")
-print(f"   • VaRR10              : {df_turnover_activos['Nuevos_VaRR10'].mean():.4f} de {K} ETFs por día")
-print(f"   • Omega               : {df_turnover_activos['Nuevos_Omega'].mean():.4f} de {K} ETFs por día")
-print(f"   • UPR                 : {df_turnover_activos['Nuevos_UPR'].mean():.4f} de {K} ETFs por día")
-print(f"   • Kappa3              : {df_turnover_activos['Nuevos_Kappa3'].mean():.4f} de {K} ETFs por día")
-print(f"   • Sortino             : {df_turnover_activos['Nuevos_Sortino'].mean():.4f} de {K} ETFs por día")
-print(f"   • GR1                 : {df_turnover_activos['Nuevos_GR1'].mean():.4f} de {K} ETFs por día")
-print(f"   • GR5                 : {df_turnover_activos['Nuevos_GR5'].mean():.4f} de {K} ETFs por día")
+print(f"   • Sharpe               : {df_turnover_activos['Nuevos_SR'].mean():.4f} de {K} ETFs por día")
+print(f"   • Sharpe Correlation   : {df_turnover_activos['Nuevos_SR_corr'].mean():.4f} de {K} ETFs por día")
+print(f"   • MSR                  : {df_turnover_activos['Nuevos_MSR'].mean():.4f} de {K} ETFs por día")
+print(f"   • VaRR1                : {df_turnover_activos['Nuevos_VaRR1'].mean():.4f} de {K} ETFs por día")
+print(f"   • VaRR5                : {df_turnover_activos['Nuevos_VaRR5'].mean():.4f} de {K} ETFs por día")
+print(f"   • VaRR10               : {df_turnover_activos['Nuevos_VaRR10'].mean():.4f} de {K} ETFs por día")
+print(f"   • Omega                : {df_turnover_activos['Nuevos_Omega'].mean():.4f} de {K} ETFs por día")
+print(f"   • UPR                  : {df_turnover_activos['Nuevos_UPR'].mean():.4f} de {K} ETFs por día")
+print(f"   • Kappa3               : {df_turnover_activos['Nuevos_Kappa3'].mean():.4f} de {K} ETFs por día")
+print(f"   • Sortino              : {df_turnover_activos['Nuevos_Sortino'].mean():.4f} de {K} ETFs por día")
+print(f"   • GR1                  : {df_turnover_activos['Nuevos_GR1'].mean():.4f} de {K} ETFs por día")
+print(f"   • GR5                  : {df_turnover_activos['Nuevos_GR5'].mean():.4f} de {K} ETFs por día")
 
 # TABLA DE FRECUENCIAS DE REBALANCEO (0 - 1 - 2 ... - K)
 df_turnover_freq = pd.DataFrame({
@@ -286,7 +221,7 @@ df_turnover_freq = pd.DataFrame({
     'Kappa3': freq_Kappa3,
     'Sortino': freq_Sortino,
     'GR1': freq_GR1,
-    'GR5': freq_GR5,
+    'GR5': freq_GR5
 })
 
 print("\nFrecuencia de rebalanceo (Número de ETFs nuevos en cartera):")
@@ -390,7 +325,7 @@ print(f"      • 4 ETFs nuevos: {df_turnover_freq['GR5'].get(4, 0)} veces")
 # GRÁFICO DE FRECUENCIA DE REBALANCEO
 plot_turnover_frequency({
         'SR': freq_SR,
-        'Sharpe Correlation': freq_SR_corr,
+        'SR_corr': freq_SR_corr,
         'MSR': freq_MSR,
         'VaRR1': freq_VaRR1,
         'VaRR5': freq_VaRR5,
@@ -400,8 +335,216 @@ plot_turnover_frequency({
         'Kappa3': freq_Kappa3,
         'Sortino': freq_Sortino,
         'GR1': freq_GR1,
-        'GR5': freq_GR5}
+        'GR5': freq_GR5},
+    save_path="turnover_histograms.pdf"
 )
+
+# PARTE III: ANÁLISIS DE LOS COSTES DE TRANSACCIÓN
+
+# CARTERA EQUIPONDERADA
+w = W_EW(K)
+
+# A) SIMULACIÓN DE CARTERA ROLLING (DINÁMICA)
+
+# EXTRAEMOS LA SUBMATRIZ DE RENDIMIENTOS OOS: (T X 100)
+R_oos = df_rendimientos.loc[T].values
+
+# VECTOR COLUMNA (T X 1) DE TIEMPO, DESDE 0 HASTA T-1
+t_oos = np.arange(len(T))[:, None]
+
+# RENDIMIENTOS INDIVIDUALES DE LOS K MEJORES ETFS PARA CADA T
+# SUBMATRIZ: (T X K)
+R_rolling_SR = R_oos[t_oos, ids_rolling_SR]
+R_rolling_SR_corr = R_oos[t_oos, ids_rolling_SR_corr]
+R_rolling_MSR = R_oos[t_oos, ids_rolling_MSR]
+R_rolling_VaRR1 = R_oos[t_oos, ids_rolling_VaRR1]
+R_rolling_VaRR5 = R_oos[t_oos, ids_rolling_VaRR5]
+R_rolling_VaRR10 = R_oos[t_oos, ids_rolling_VaRR10]
+R_rolling_Omega = R_oos[t_oos, ids_rolling_Omega]
+R_rolling_UPR = R_oos[t_oos, ids_rolling_UPR]
+R_rolling_Kappa3 = R_oos[t_oos, ids_rolling_Kappa3]
+R_rolling_Sortino = R_oos[t_oos, ids_rolling_Sortino]
+R_rolling_GR1 = R_oos[t_oos, ids_rolling_GR1]
+R_rolling_GR5 = R_oos[t_oos, ids_rolling_GR5]
+
+# RENDIMIENTOS DE LAS CARTERAS ROLLING EQUIPONDERADAS
+# PRODUCTO MATRICIAL (SUMATORIO): R_P = R_I @ W
+# DIMENSIONES: (T X 1) = (T X K) @ (K X 1)
+R_cartera_SR = pd.Series(R_rolling_SR @ w, index=T)
+R_cartera_SR_corr = pd.Series(R_rolling_SR_corr @ w, index=T)
+R_cartera_MSR = pd.Series(R_rolling_MSR @ w, index=T)
+R_cartera_VaRR1 = pd.Series(R_rolling_VaRR1 @ w, index=T)
+R_cartera_VaRR5 = pd.Series(R_rolling_VaRR5 @ w, index=T)
+R_cartera_VaRR10 = pd.Series(R_rolling_VaRR10 @ w, index=T)
+R_cartera_Omega = pd.Series(R_rolling_Omega @ w, index=T)
+R_cartera_UPR = pd.Series(R_rolling_UPR @ w, index=T)
+R_cartera_Kappa3 = pd.Series(R_rolling_Kappa3 @ w, index=T)
+R_cartera_Sortino = pd.Series(R_rolling_Sortino @ w, index=T)
+R_cartera_GR1 = pd.Series(R_rolling_GR1 @ w, index=T)
+R_cartera_GR5 = pd.Series(R_rolling_GR5 @ w, index=T)
+
+# INVERSIÓN INICIAL DE 1€ 
+W0 = 1
+
+# RIQUEZA ACUMULADA DE LA CARTERA ROLLING (PRODUCTORIO): 
+# WT = W0 PROD(1 + RP,T) DESDE T=1 HASTA T
+wealth_rolling_SR = W0 * (1 + R_cartera_SR).cumprod()
+wealth_rolling_SR_corr = W0 * (1 + R_cartera_SR_corr).cumprod()
+wealth_rolling_MSR = W0 * (1 + R_cartera_MSR).cumprod()
+wealth_rolling_VaRR1 = W0 * (1 + R_cartera_VaRR1).cumprod()
+wealth_rolling_VaRR5 = W0 * (1 + R_cartera_VaRR5).cumprod()
+wealth_rolling_VaRR10 = W0 * (1 + R_cartera_VaRR10).cumprod()
+wealth_rolling_Omega = W0 * (1 + R_cartera_Omega).cumprod()
+wealth_rolling_UPR = W0 * (1 + R_cartera_UPR).cumprod()
+wealth_rolling_Kappa3 = W0 * (1 + R_cartera_Kappa3).cumprod()
+wealth_rolling_Sortino = W0 * (1 + R_cartera_Sortino).cumprod()
+wealth_rolling_GR1 = W0 * (1 + R_cartera_GR1).cumprod()
+wealth_rolling_GR5 = W0 * (1 + R_cartera_GR5).cumprod()
+
+# B) CARTERA BUY & HOLD PURA
+# SOLO INVERTIMOS EN T = 0 Y NO INTERVENIMOS MÁS
+t0 = ranking_SR_oos.index[ranking_SR_oos.index < OOS_START_DATE][-1]
+
+# K MEJORES ETFS EN T=0 (Y LOS CONGELAMOS): (1 X K)
+ids_buyhold_SR = ranking_SR_oos.loc[t0].values
+ids_buyhold_SR_corr = ranking_SR_corr_oos.loc[t0].values
+ids_buyhold_MSR = ranking_MSR_oos.loc[t0].values
+ids_buyhold_VaRR1 = ranking_VaRR1_oos.loc[t0].values
+ids_buyhold_VaRR5 = ranking_VaRR5_oos.loc[t0].values
+ids_buyhold_VaRR10 = ranking_VaRR10_oos.loc[t0].values
+ids_buyhold_Omega = ranking_Omega_oos.loc[t0].values
+ids_buyhold_UPR = ranking_UPR_oos.loc[t0].values
+ids_buyhold_Kappa3 = ranking_Kappa3_oos.loc[t0].values
+ids_buyhold_Sortino = ranking_Sortino_oos.loc[t0].values
+ids_buyhold_GR1 = ranking_GR1_oos.loc[t0].values
+ids_buyhold_GR5 = ranking_GR5_oos.loc[t0].values
+
+# MATRIZ DE RENDIMIENTOS OOS DE LOS ETFS SELECCIONADOS POR LA B&H: (T X K)
+R_buyhold_SR = df_rendimientos.loc[T, ids_buyhold_SR]
+R_buyhold_SR_corr = df_rendimientos.loc[T, ids_buyhold_SR_corr]
+R_buyhold_MSR = df_rendimientos.loc[T, ids_buyhold_MSR]
+R_buyhold_VaRR1 = df_rendimientos.loc[T, ids_buyhold_VaRR1]
+R_buyhold_VaRR5 = df_rendimientos.loc[T, ids_buyhold_VaRR5]
+R_buyhold_VaRR10 = df_rendimientos.loc[T, ids_buyhold_VaRR10]
+R_buyhold_Omega = df_rendimientos.loc[T, ids_buyhold_Omega]
+R_buyhold_UPR = df_rendimientos.loc[T, ids_buyhold_UPR]
+R_buyhold_Kappa3 = df_rendimientos.loc[T, ids_buyhold_Kappa3]
+R_buyhold_Sortino = df_rendimientos.loc[T, ids_buyhold_Sortino]
+R_buyhold_GR1 = df_rendimientos.loc[T, ids_buyhold_GR1]
+R_buyhold_GR5 = df_rendimientos.loc[T, ids_buyhold_GR5]
+
+# RIQUEZA ACUMULADA (T X K)
+etf_wealth_buyhold_SR = W0 * (1 + R_buyhold_SR).cumprod()
+etf_wealth_buyhold_SR_corr = W0 * (1 + R_buyhold_SR_corr).cumprod()
+etf_wealth_buyhold_MSR = W0 * (1 + R_buyhold_MSR).cumprod()
+etf_wealth_buyhold_VaRR1 = W0 * (1 + R_buyhold_VaRR1).cumprod()
+etf_wealth_buyhold_VaRR5 = W0 * (1 + R_buyhold_VaRR5).cumprod() 
+etf_wealth_buyhold_VaRR10 = W0 * (1 + R_buyhold_VaRR10).cumprod()
+etf_wealth_buyhold_Omega = W0 * (1 + R_buyhold_Omega).cumprod()
+etf_wealth_buyhold_UPR = W0 * (1 + R_buyhold_UPR).cumprod()
+etf_wealth_buyhold_Kappa3 = W0 * (1 + R_buyhold_Kappa3).cumprod()
+etf_wealth_buyhold_Sortino = W0 * (1 + R_buyhold_Sortino).cumprod()
+etf_wealth_buyhold_GR1 = W0 * (1 + R_buyhold_GR1).cumprod()
+etf_wealth_buyhold_GR5 = W0 * (1 + R_buyhold_GR5).cumprod()
+
+# SUMA PONDERADA DE LA RIQUEZA PATRIMONIAL POR ETF
+# DIMENSIONES: (T X K) @ (K X 1) = (T X 1)
+wealth_buyhold_SR = pd.Series(etf_wealth_buyhold_SR.values @ w, index=T)
+wealth_buyhold_SR_corr = pd.Series(etf_wealth_buyhold_SR_corr.values @ w, index=T)
+wealth_buyhold_MSR = pd.Series(etf_wealth_buyhold_MSR.values @ w, index=T)
+wealth_buyhold_VaRR1 = pd.Series(etf_wealth_buyhold_VaRR1.values @ w, index=T)
+wealth_buyhold_VaRR5 = pd.Series(etf_wealth_buyhold_VaRR5.values @ w, index=T)
+wealth_buyhold_VaRR10 = pd.Series(etf_wealth_buyhold_VaRR10.values @ w, index=T)
+wealth_buyhold_Omega = pd.Series(etf_wealth_buyhold_Omega.values @ w, index=T)
+wealth_buyhold_UPR = pd.Series(etf_wealth_buyhold_UPR.values @ w, index=T)
+wealth_buyhold_Kappa3 = pd.Series(etf_wealth_buyhold_Kappa3.values @ w, index=T)
+wealth_buyhold_Sortino = pd.Series(etf_wealth_buyhold_Sortino.values @ w, index=T)
+wealth_buyhold_GR1 = pd.Series(etf_wealth_buyhold_GR1.values @ w, index=T)
+wealth_buyhold_GR5 = pd.Series(etf_wealth_buyhold_GR5.values @ w, index=T)
+
+# COSTES DE TRANSACCIÓN (DEMIGUEL 2009)
+c = 0.0020
+
+wealth_rolling_SR_netos = pd.Series(transaction_costs(R_oos, ids_rolling_SR, c=c), index=T)
+wealth_rolling_SR_corr_netos = pd.Series(transaction_costs(R_oos, ids_rolling_SR_corr, c=c), index=T)
+wealth_rolling_MSR_netos = pd.Series(transaction_costs(R_oos, ids_rolling_MSR, c=c), index=T)
+wealth_rolling_VaRR1_netos = pd.Series(transaction_costs(R_oos, ids_rolling_VaRR1, c=c), index=T)
+wealth_rolling_VaRR5_netos = pd.Series(transaction_costs(R_oos, ids_rolling_VaRR5, c=c), index=T)
+wealth_rolling_VaRR10_netos = pd.Series(transaction_costs(R_oos, ids_rolling_VaRR10, c=c), index=T)
+wealth_rolling_Omega_netos = pd.Series(transaction_costs(R_oos, ids_rolling_Omega, c=c), index=T)
+wealth_rolling_UPR_netos = pd.Series(transaction_costs(R_oos, ids_rolling_UPR, c=c), index=T)
+wealth_rolling_Kappa3_netos = pd.Series(transaction_costs(R_oos, ids_rolling_Kappa3, c=c), index=T)
+wealth_rolling_Sortino_netos = pd.Series(transaction_costs(R_oos, ids_rolling_Sortino, c=c), index=T)
+wealth_rolling_GR1_netos = pd.Series(transaction_costs(R_oos, ids_rolling_GR1, c=c), index=T)
+wealth_rolling_GR5_netos = pd.Series(transaction_costs(R_oos, ids_rolling_GR5, c=c), index=T)
+
+# GRÁFICO COMPARATIVO: ROLLING SIN COSTES VS CON COSTES (BENCHMARK: BUY & HOLD)
+plot_cumulative_returns({
+    'SR': (wealth_rolling_SR, wealth_buyhold_SR, wealth_rolling_SR_netos, 'blue'),
+    'SR_corr': (wealth_rolling_SR_corr, wealth_buyhold_SR_corr, wealth_rolling_SR_corr_netos, 'purple'),
+    'MSR': (wealth_rolling_MSR, wealth_buyhold_MSR, wealth_rolling_MSR_netos, 'indigo'),
+    'VaRR1': (wealth_rolling_VaRR1, wealth_buyhold_VaRR1, wealth_rolling_VaRR1_netos, 'red'),
+    'VaRR5': (wealth_rolling_VaRR5, wealth_buyhold_VaRR5, wealth_rolling_VaRR5_netos, 'green'),
+    'VaRR10': (wealth_rolling_VaRR10, wealth_buyhold_VaRR10, wealth_rolling_VaRR10_netos, 'orange'),
+    'Omega': (wealth_rolling_Omega, wealth_buyhold_Omega, wealth_rolling_Omega_netos, 'blue'),
+    'UPR': (wealth_rolling_UPR, wealth_buyhold_UPR, wealth_rolling_UPR_netos, 'green'),
+    'Kappa3': (wealth_rolling_Kappa3, wealth_buyhold_Kappa3, wealth_rolling_Kappa3_netos, 'red'),
+    'Sortino': (wealth_rolling_Sortino, wealth_buyhold_Sortino, wealth_rolling_Sortino_netos, 'orange'),
+    'GR1': (wealth_rolling_GR1, wealth_buyhold_GR1, wealth_rolling_GR1_netos, 'brown'),
+    'GR5': (wealth_rolling_GR5, wealth_buyhold_GR5, wealth_rolling_GR5_netos, 'green'),
+})
+
+# RESULTADOS DE LA RIQUEZA ACUMULADA
+print("\nResultados: Riqueza Acumulada")
+
+# BUY & HOLD
+print("\n   ► BUY & HOLD (sin costes):")
+print(f"      Sharpe Ratio : €{wealth_buyhold_SR.iloc[-1]:.4f}")
+print(f"      Sharpe Corr  : €{wealth_buyhold_SR_corr.iloc[-1]:.4f}")
+print(f"      MSR          : €{wealth_buyhold_MSR.iloc[-1]:.4f}")
+print(f"      VaRR1        : €{wealth_buyhold_VaRR1.iloc[-1]:.4f}")
+print(f"      VaRR5        : €{wealth_buyhold_VaRR5.iloc[-1]:.4f}")
+print(f"      VaRR10       : €{wealth_buyhold_VaRR10.iloc[-1]:.4f}")
+print(f"      Omega        : €{wealth_buyhold_Omega.iloc[-1]:.4f}")
+print(f"      UPR          : €{wealth_buyhold_UPR.iloc[-1]:.4f}")
+print(f"      Kappa3       : €{wealth_buyhold_Kappa3.iloc[-1]:.4f}")
+print(f"      Sortino      : €{wealth_buyhold_Sortino.iloc[-1]:.4f}")
+print(f"      GR1          : €{wealth_buyhold_GR1.iloc[-1]:.4f}")
+print(f"      GR5          : €{wealth_buyhold_GR5.iloc[-1]:.4f}")
+
+# ROLLING SIN COSTES
+print("\n   ► ROLLING WINDOW (sin costes):")
+print(f"      Sharpe Ratio : €{wealth_rolling_SR.iloc[-1]:.4f}")
+print(f"      Sharpe Corr  : €{wealth_rolling_SR_corr.iloc[-1]:.4f}")
+print(f"      MSR          : €{wealth_rolling_MSR.iloc[-1]:.4f}")
+print(f"      VaRR1        : €{wealth_rolling_VaRR1.iloc[-1]:.4f}")
+print(f"      VaRR5        : €{wealth_rolling_VaRR5.iloc[-1]:.4f}")
+print(f"      VaRR10       : €{wealth_rolling_VaRR10.iloc[-1]:.4f}")
+print(f"      Omega        : €{wealth_rolling_Omega.iloc[-1]:.4f}")
+print(f"      UPR          : €{wealth_rolling_UPR.iloc[-1]:.4f}")
+print(f"      Kappa3       : €{wealth_rolling_Kappa3.iloc[-1]:.4f}")
+print(f"      Sortino      : €{wealth_rolling_Sortino.iloc[-1]:.4f}")
+print(f"      GR1          : €{wealth_rolling_GR1.iloc[-1]:.4f}")
+print(f"      GR5          : €{wealth_rolling_GR5.iloc[-1]:.4f}")
+
+# ROLLING CON COSTES
+print(f"\n   ► ROLLING WINDOW - con costes de transacción - ({c * 10000} bps):")
+print(f"      Sharpe Ratio : €{wealth_rolling_SR_netos.iloc[-1]:.4f}")
+print(f"      Sharpe Corr  : €{wealth_rolling_SR_corr_netos.iloc[-1]:.4f}")
+print(f"      MSR          : €{wealth_rolling_MSR_netos.iloc[-1]:.4f}")
+print(f"      VaRR1        : €{wealth_rolling_VaRR1_netos.iloc[-1]:.4f}")
+print(f"      VaRR5        : €{wealth_rolling_VaRR5_netos.iloc[-1]:.4f}")
+print(f"      VaRR10       : €{wealth_rolling_VaRR10_netos.iloc[-1]:.4f}")
+print(f"      Omega        : €{wealth_rolling_Omega_netos.iloc[-1]:.4f}")
+print(f"      UPR          : €{wealth_rolling_UPR_netos.iloc[-1]:.4f}")
+print(f"      Kappa3       : €{wealth_rolling_Kappa3_netos.iloc[-1]:.4f}")
+print(f"      Sortino      : €{wealth_rolling_Sortino_netos.iloc[-1]:.4f}")
+print(f"      GR1          : €{wealth_rolling_GR1_netos.iloc[-1]:.4f}")
+print(f"      GR5          : €{wealth_rolling_GR5_netos.iloc[-1]:.4f}")
+
+plt.show(block=True)
+
+# PARTE IV: ESTADÍSTICAS DE SELECCIÓN
 
 # ESTADÍSTICAS DE APARICIÓN Y POSICIÓN DE ETFS
 stats_SR = etf_stats(ids_rolling_SR, tickers)
@@ -725,149 +868,26 @@ print(f"      3. {stats_GR5.iloc[2]['Ticker']:<10} (Posición media: {stats_GR5.
 print(f"      4. {stats_GR5.iloc[3]['Ticker']:<10} (Posición media: {stats_GR5.iloc[3]['Average_Position']:.2f}º)")
 print(f"      5. {stats_GR5.iloc[4]['Ticker']:<10} (Posición media: {stats_GR5.iloc[4]['Average_Position']:.2f}º)")
 
-# PARTE 4: CREAMOS NUEVO EXCEL
-# CONVERTIMOS IDS A TICKERS
-ranking_SR = ranking_SR_oos.map(id_to_ticker.get)
-ranking_SR_corr = ranking_SR_corr_oos.map(id_to_ticker.get)
-ranking_MSR = ranking_MSR_oos.map(id_to_ticker.get)
-ranking_VaRR1 = ranking_VaRR1_oos.map(id_to_ticker.get)
-ranking_VaRR5 = ranking_VaRR5_oos.map(id_to_ticker.get)
-ranking_VaRR10 = ranking_VaRR10_oos.map(id_to_ticker.get)
-ranking_Omega = ranking_Omega_oos.map(id_to_ticker.get)
-ranking_UPR = ranking_UPR_oos.map(id_to_ticker.get)
-ranking_Kappa3 = ranking_Kappa3_oos.map(id_to_ticker.get)
-ranking_Sortino = ranking_Sortino_oos.map(id_to_ticker.get)
-ranking_GR1 = ranking_GR1_oos.map(id_to_ticker.get)
-ranking_GR5 = ranking_GR5_oos.map(id_to_ticker.get)
-
-# PARTE 5: COSTES DE TRANSACCIÓN (DEMIGUEL 2009)
-c = 0.0020
-
-wealth_rolling_SR_netos = pd.Series(transaction_costs(R_oos, ids_rolling_SR, c=c), index=T)
-wealth_rolling_SR_corr_netos = pd.Series(transaction_costs(R_oos, ids_rolling_SR_corr, c=c), index=T)
-wealth_rolling_MSR_netos = pd.Series(transaction_costs(R_oos, ids_rolling_MSR, c=c), index=T)
-wealth_rolling_VaRR1_netos = pd.Series(transaction_costs(R_oos, ids_rolling_VaRR1, c=c), index=T)
-wealth_rolling_VaRR5_netos = pd.Series(transaction_costs(R_oos, ids_rolling_VaRR5, c=c), index=T)
-wealth_rolling_VaRR10_netos = pd.Series(transaction_costs(R_oos, ids_rolling_VaRR10, c=c), index=T)
-wealth_rolling_Omega_netos = pd.Series(transaction_costs(R_oos, ids_rolling_Omega, c=c), index=T)
-wealth_rolling_UPR_netos = pd.Series(transaction_costs(R_oos, ids_rolling_UPR, c=c), index=T)
-wealth_rolling_Kappa3_netos = pd.Series(transaction_costs(R_oos, ids_rolling_Kappa3, c=c), index=T)
-wealth_rolling_Sortino_netos = pd.Series(transaction_costs(R_oos, ids_rolling_Sortino, c=c), index=T)
-wealth_rolling_GR1_netos = pd.Series(transaction_costs(R_oos, ids_rolling_GR1, c=c), index=T)
-wealth_rolling_GR5_netos = pd.Series(transaction_costs(R_oos, ids_rolling_GR5, c=c), index=T)
-
-# GRÁFICO COMPARATIVO (PANEL 2X5): ROLLING SIN COSTES, CON COSTES Y BUY & HOLD
-plot_cumulative_returns({
-    'SR': (wealth_rolling_SR, wealth_buyhold_SR, wealth_rolling_SR_netos, 'blue'),
-    'SR Correlation': (wealth_rolling_SR_corr, wealth_buyhold_SR_corr, wealth_rolling_SR_corr_netos, 'purple'),
-    'MSR': (wealth_rolling_MSR, wealth_buyhold_MSR, wealth_rolling_MSR_netos, 'indigo'),
-    'VaRR1': (wealth_rolling_VaRR1, wealth_buyhold_VaRR1, wealth_rolling_VaRR1_netos, 'red'),
-    'VaRR5': (wealth_rolling_VaRR5, wealth_buyhold_VaRR5, wealth_rolling_VaRR5_netos, 'green'),
-    'VaRR10': (wealth_rolling_VaRR10, wealth_buyhold_VaRR10, wealth_rolling_VaRR10_netos, 'orange'),
-    'Omega': (wealth_rolling_Omega, wealth_buyhold_Omega, wealth_rolling_Omega_netos, 'blue'),
-    'UPR': (wealth_rolling_UPR, wealth_buyhold_UPR, wealth_rolling_UPR_netos, 'green'),
-    'Kappa3': (wealth_rolling_Kappa3, wealth_buyhold_Kappa3, wealth_rolling_Kappa3_netos, 'red'),
-    'Sortino': (wealth_rolling_Sortino, wealth_buyhold_Sortino, wealth_rolling_Sortino_netos, 'orange'),
-    'GR1': (wealth_rolling_GR1, wealth_buyhold_GR1, wealth_rolling_GR1_netos, 'brown'),
-    'GR5': (wealth_rolling_GR5, wealth_buyhold_GR5, wealth_rolling_GR5_netos, 'green'),
-})
-
-# RESULTADOS FINALES
-print("\nResultados: Riqueza Acumulada")
-
-# BUY & HOLD
-print("\n   ► BUY & HOLD (sin costes):")
-print(f"      Sharpe Ratio : €{wealth_buyhold_SR.iloc[-1]:.4f}")
-print(f"      Sharpe Corr  : €{wealth_buyhold_SR_corr.iloc[-1]:.4f}")
-print(f"      MSR          : €{wealth_buyhold_MSR.iloc[-1]:.4f}")
-print(f"      VaRR1        : €{wealth_buyhold_VaRR1.iloc[-1]:.4f}")
-print(f"      VaRR5        : €{wealth_buyhold_VaRR5.iloc[-1]:.4f}")
-print(f"      VaRR10       : €{wealth_buyhold_VaRR10.iloc[-1]:.4f}")
-print(f"      Omega        : €{wealth_buyhold_Omega.iloc[-1]:.4f}")
-print(f"      UPR          : €{wealth_buyhold_UPR.iloc[-1]:.4f}")
-print(f"      Kappa3       : €{wealth_buyhold_Kappa3.iloc[-1]:.4f}")
-print(f"      Sortino      : €{wealth_buyhold_Sortino.iloc[-1]:.4f}")
-print(f"      GR1          : €{wealth_buyhold_GR1.iloc[-1]:.4f}")
-print(f"      GR5          : €{wealth_buyhold_GR5.iloc[-1]:.4f}")
-
-# ROLLING SIN COSTES
-print("\n   ► ROLLING WINDOW (sin costes):")
-print(f"      Sharpe Ratio : €{wealth_rolling_SR.iloc[-1]:.4f}")
-print(f"      Sharpe Corr  : €{wealth_rolling_SR_corr.iloc[-1]:.4f}")
-print(f"      MSR          : €{wealth_rolling_MSR.iloc[-1]:.4f}")
-print(f"      VaRR1        : €{wealth_rolling_VaRR1.iloc[-1]:.4f}")
-print(f"      VaRR5        : €{wealth_rolling_VaRR5.iloc[-1]:.4f}")
-print(f"      VaRR10       : €{wealth_rolling_VaRR10.iloc[-1]:.4f}")
-print(f"      Omega        : €{wealth_rolling_Omega.iloc[-1]:.4f}")
-print(f"      UPR          : €{wealth_rolling_UPR.iloc[-1]:.4f}")
-print(f"      Kappa3       : €{wealth_rolling_Kappa3.iloc[-1]:.4f}")
-print(f"      Sortino      : €{wealth_rolling_Sortino.iloc[-1]:.4f}")
-print(f"      GR1          : €{wealth_rolling_GR1.iloc[-1]:.4f}")
-print(f"      GR5          : €{wealth_rolling_GR5.iloc[-1]:.4f}")
-
-# ROLLING CON COSTES
-print(f"\n   ► ROLLING WINDOW - con costes de transacción - ({c * 10000} bps):")
-print(f"      Sharpe Ratio : €{wealth_rolling_SR_netos.iloc[-1]:.4f}")
-print(f"      Sharpe Corr  : €{wealth_rolling_SR_corr_netos.iloc[-1]:.4f}")
-print(f"      MSR          : €{wealth_rolling_MSR_netos.iloc[-1]:.4f}")
-print(f"      VaRR1        : €{wealth_rolling_VaRR1_netos.iloc[-1]:.4f}")
-print(f"      VaRR5        : €{wealth_rolling_VaRR5_netos.iloc[-1]:.4f}")
-print(f"      VaRR10       : €{wealth_rolling_VaRR10_netos.iloc[-1]:.4f}")
-print(f"      Omega        : €{wealth_rolling_Omega_netos.iloc[-1]:.4f}")
-print(f"      UPR          : €{wealth_rolling_UPR_netos.iloc[-1]:.4f}")
-print(f"      Kappa3       : €{wealth_rolling_Kappa3_netos.iloc[-1]:.4f}")
-print(f"      Sortino      : €{wealth_rolling_Sortino_netos.iloc[-1]:.4f}")
-print(f"      GR1          : €{wealth_rolling_GR1_netos.iloc[-1]:.4f}")
-print(f"      GR5          : €{wealth_rolling_GR5_netos.iloc[-1]:.4f}")
-
-plt.show(block=True)
-
-print(f"\n Análisis completado. Archivo guardado: {OUTPUT_FILE}")
-
-# VARIABLES GUARADAS PARA EL PROXIMO CÓDIGO
-variables = {
-    'K': K,
-    'c': c,
-    'T': T,
-    'M': M,
-    'df_rendimientos': df_rendimientos,
-    'tickers': tickers,
-    'ticker_to_id': ticker_to_id,
-    'id_to_ticker': id_to_ticker,
-    'oos_start_date': OOS_START_DATE,
-    'rankings_ids': {
-        'SR': ids_rolling_SR,
-        'SR_corr': ids_rolling_SR_corr,
-        'MSR': ids_rolling_MSR,
-        'VaRR1': ids_rolling_VaRR1,
-        'VaRR5': ids_rolling_VaRR5,
-        'VaRR10': ids_rolling_VaRR10,
-        'Omega': ids_rolling_Omega,
-        'UPR': ids_rolling_UPR,
-        'Kappa3': ids_rolling_Kappa3,
-        'Sortino': ids_rolling_Sortino,
-        'GR1': ids_rolling_GR1,
-        'GR5': ids_rolling_GR5,
-    },
-    'rotation_mean': {
-        'SR': float(df_turnover_activos['Nuevos_SR'].mean()),
-        'SR_corr': float(df_turnover_activos['Nuevos_SR_corr'].mean()),
-        'MSR': float(df_turnover_activos['Nuevos_MSR'].mean()),
-        'VaRR1': float(df_turnover_activos['Nuevos_VaRR1'].mean()),
-        'VaRR5': float(df_turnover_activos['Nuevos_VaRR5'].mean()),
-        'VaRR10': float(df_turnover_activos['Nuevos_VaRR10'].mean()),
-        'Omega': float(df_turnover_activos['Nuevos_Omega'].mean()),
-        'UPR': float(df_turnover_activos['Nuevos_UPR'].mean()),
-        'Kappa3': float(df_turnover_activos['Nuevos_Kappa3'].mean()),
-        'Sortino': float(df_turnover_activos['Nuevos_Sortino'].mean()),
-        'GR1': float(df_turnover_activos['Nuevos_GR1'].mean()),
-        'GR5': float(df_turnover_activos['Nuevos_GR5'].mean()),
-    }
+all_stats_dict = {
+    'SR': stats_SR,
+    'SR_corr': stats_SR_corr,
+    'MSR': stats_MSR,
+    'VaRR1': stats_VaRR1,
+    'VaRR5': stats_VaRR5,
+    'VaRR10': stats_VaRR10,
+    'Omega': stats_Omega,
+    'UPR': stats_UPR,
+    'Kappa3': stats_Kappa3,
+    'Sortino': stats_Sortino,
+    'GR1': stats_GR1,
+    'GR5': stats_GR5
 }
 
-joblib.dump(variables, VARIABLES_FILE)
+# GRÁFICO
+plot_survival_heatmap(all_stats_dict)
 
-# PARTE 4: CREAMOS SERIES TEMPORALES DE LOS RATIOS DE PERFORMANCE
+# PARTE V: CREAMOS SERIES TEMPORALES DE LOS RATIOS DE PERFORMANCE
+
 # FECHA INICIO DE LA SERIE
 fecha_inicio_IS = df_rendimientos.index[M].strftime('%Y-%m-%d') 
 
@@ -887,8 +907,56 @@ serie_Sortino_completa = series_completa['Sortino']
 serie_GR1_completa = series_completa['GR1']
 serie_GR5_completa = series_completa['GR5']
 
+# CONVERTIMOS IDS A TICKERS
+
+ranking_SR = ranking_SR_oos.map(id_to_ticker.get)
+ranking_SR_corr = ranking_SR_corr_oos.map(id_to_ticker.get)
+ranking_MSR = ranking_MSR_oos.map(id_to_ticker.get)
+ranking_VaRR1 = ranking_VaRR1_oos.map(id_to_ticker.get)
+ranking_VaRR5 = ranking_VaRR5_oos.map(id_to_ticker.get)
+ranking_VaRR10 = ranking_VaRR10_oos.map(id_to_ticker.get)
+ranking_Omega = ranking_Omega_oos.map(id_to_ticker.get)
+ranking_UPR = ranking_UPR_oos.map(id_to_ticker.get)
+ranking_Kappa3 = ranking_Kappa3_oos.map(id_to_ticker.get)
+ranking_Sortino = ranking_Sortino_oos.map(id_to_ticker.get)
+ranking_GR1 = ranking_GR1_oos.map(id_to_ticker.get)
+ranking_GR5 = ranking_GR5_oos.map(id_to_ticker.get)
+
+print(f"\n Análisis completado. Archivo guardado: {OUTPUT_FILE}")
+
+# VARIABLES GUARADAS PARA EL PROXIMO CÓDIGO
+variables = {
+    'K': K,
+    'c': c,
+    'T': T,
+    'M': M,
+    'df_rendimientos': df_rendimientos,
+    'tickers': tickers,
+    'ticker_to_id': ticker_to_id,
+    'id_to_ticker': id_to_ticker,
+    'oos_start_date': OOS_START_DATE,
+    'rankings_ids': ranking_ids,
+    'rotation_mean': {
+        'SR': float(df_turnover_activos['Nuevos_SR'].mean()),
+        'SR_corr': float(df_turnover_activos['Nuevos_SR_corr'].mean()),
+        'MSR': float(df_turnover_activos['Nuevos_MSR'].mean()),
+        'VaRR1': float(df_turnover_activos['Nuevos_VaRR1'].mean()),
+        'VaRR5': float(df_turnover_activos['Nuevos_VaRR5'].mean()),
+        'VaRR10': float(df_turnover_activos['Nuevos_VaRR10'].mean()),
+        'Omega': float(df_turnover_activos['Nuevos_Omega'].mean()),
+        'UPR': float(df_turnover_activos['Nuevos_UPR'].mean()),
+        'Kappa3': float(df_turnover_activos['Nuevos_Kappa3'].mean()),
+        'Sortino': float(df_turnover_activos['Nuevos_Sortino'].mean()),
+        'GR1': float(df_turnover_activos['Nuevos_GR1'].mean()),
+        'GR5': float(df_turnover_activos['Nuevos_GR5'].mean()),
+    }
+}
+
+joblib.dump(variables, VARIABLES_FILE)
+
 """
-# PASAMOS A EXCEL
+# EXCEL
+
 with pd.ExcelWriter(OUTPUT_FILE, engine='openpyxl', mode='w') as writer:
     
     # ID DE ETFS
