@@ -221,27 +221,50 @@ def plot_mhi(mhi_history, fechas_oos, ratios, perfiles):
 
 def plot_dendrogram(link: np.ndarray, labels: list, title: str, save_path: str = "dendrogram.pdf"):
     set_latex_style()
-    fig, ax = plt.subplots(figsize=(10, 5))
-    sch.dendrogram(link, labels=labels, leaf_rotation=90, ax=ax, color_threshold=0, above_threshold_color='black')
-    ax.set_title(title, fontsize=14, fontweight='bold')
+    fig, ax = plt.subplots(figsize=(10, 5.5))
+    sch.set_link_color_palette(['#1f4e79', '#a50026', '#404040', '#006d2c', '#542788'])
+
+    max_d = link[-1, 2]
+    corte_visual = 0.7 * max_d
+
+    sch.dendrogram(
+        link, 
+        labels=labels, 
+        leaf_rotation=90, 
+        leaf_font_size=11,
+        ax=ax, 
+        color_threshold=corte_visual, 
+        above_threshold_color='#1a1a1a'
+    )
+
+    ax.set_title(title, fontsize=13, fontweight='bold', pad=15)
+    ax.set_ylabel('Distancia', fontsize=11, labelpad=10)
+
+    ax.grid(axis='y', linestyle='--', alpha=0.3, zorder=0) # Cuadrícula sutil de fondo
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_linewidth(0.8)
+    ax.spines['bottom'].set_linewidth(0.8)
     
     plt.tight_layout()
     plt.savefig(save_path, format='pdf', bbox_inches='tight', transparent=True)
-    plt.show()
-
+    plt.show(block=False)
+    
 def plot_matrix_heatmap(matrix: pd.DataFrame, title: str, save_path: str = "matrix_heatmap.pdf"):
     set_latex_style()
     plt.figure(figsize=(8, 6))
-    plt.pcolor(matrix, cmap='jet')
+    
+    plt.pcolor(matrix, cmap='RdBu', vmin=-1, vmax=1)
+    
     plt.colorbar()
     plt.yticks(np.arange(0.5, matrix.shape[0] + 0.5), matrix.index)
     plt.xticks(np.arange(0.5, matrix.shape[1] + 0.5), matrix.columns, rotation=90)
-    plt.title(title)
+    plt.gca().invert_yaxis()
+    
+    plt.title(title, fontweight='bold', pad=15)
     plt.tight_layout()
     plt.savefig(save_path, format='pdf', bbox_inches='tight', transparent=True)
-    plt.show()
+    plt.show(block=False)
 
 def plot_coincidence_heatmap(matrix: pd.DataFrame, save_path: str = "coincidence_heatmap.pdf"):
     set_latex_style()
@@ -269,3 +292,44 @@ def plot_survival_heatmap(all_stats_dict):
     plt.tight_layout()
     plt.savefig("survival_heatmap.pdf", format='pdf', bbox_inches='tight', transparent=True)
     plt.show()
+    
+def plot_dendrogram_heatmap(corr_matrix: pd.DataFrame, link: np.ndarray, title: str, save_path: str = "clustermap.pdf"):
+    set_latex_style()
+    
+    order = sch.leaves_list(link)
+    ordered_corr = corr_matrix.iloc[order, order]
+    ordered_labels = ordered_corr.columns.tolist()
+    
+    fig = plt.figure(figsize=(10, 11))
+    gs = plt.GridSpec(2, 2, width_ratios=[20, 1], height_ratios=[1, 4], hspace=0.05, wspace=0.02)
+    
+    ax_dendro = fig.add_subplot(gs[0, 0])
+    ax_heatmap = fig.add_subplot(gs[1, 0])
+    ax_cbar = fig.add_subplot(gs[1, 1])
+
+    sch.set_link_color_palette(['#1f4e79', '#a50026', '#404040', '#006d2c', '#542788'])
+    max_d = link[-1, 2]
+    sch.dendrogram(link, ax=ax_dendro, no_labels=True, color_threshold=0.7*max_d, 
+                   above_threshold_color='#1a1a1a', link_color_func=None)
+    ax_dendro.set_axis_off() 
+
+    sns.heatmap(
+        ordered_corr, 
+        ax=ax_heatmap, 
+        cbar_ax=ax_cbar, 
+        cmap="RdBu", 
+        vmin=-1, vmax=1, 
+        annot=True, fmt=".2f", 
+        annot_kws={"size": 8, "fontweight": "bold"},
+        xticklabels=ordered_labels, 
+        yticklabels=ordered_labels,
+        linewidths=0.5, linecolor='white'
+    )
+    
+    ax_heatmap.set_xticklabels(ax_heatmap.get_xticklabels(), rotation=90)
+    ax_heatmap.set_yticklabels(ax_heatmap.get_yticklabels(), rotation=0)
+    
+    fig.suptitle(title, fontweight='bold', fontsize=14, y=0.95)
+    
+    plt.savefig(save_path, format='pdf', bbox_inches='tight', transparent=True)
+    plt.show(block=False)

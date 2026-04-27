@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import joblib
 from screening import ROLLING_WINDOW_RANKINGS
 from metrics import risk_contribution, allocation_model_with_costs, MHI, maxDrawDown
-from plots import plot_allocation_spreads, plot_selection_spreads, plot_mhi, plot_robustness_analysis, plot_dendrogram, plot_matrix_heatmap
+from plots import plot_allocation_spreads, plot_selection_spreads, plot_mhi, plot_robustness_analysis, plot_dendrogram, plot_matrix_heatmap, plot_dendrogram_heatmap
 from portfolios import W_EW, W_VT, W_RRT, W_GMV, W_ERC, W_MVS, W_HRP, W_HERC
 from hrp import HRP, HERC
 
@@ -127,45 +127,60 @@ Sigma = (Sigma + Sigma.T) / 2.0
 # ETFs SELECCIONADOS EN LA VERTICAL (PASAMOS DE IDs A TICKERS)
 etfs_vertical = [id_to_ticker[ids + 1] for ids in ids_vertical]
 
+# CORRELATION MATRIX
+corr_matrix = pd.DataFrame(R_IS, columns=etfs_vertical).corr()
+
 # ALGORITMO HRP
 w_HRP, links_vertical_HRP, Sigma_quasidiag_HRP = HRP(Sigma, labels=etfs_vertical)
 
 # ALGORITMO HERC
 w_HERC, links_vertical_HERC, Sigma_quasidiag_HERC = HERC(Sigma, labels=etfs_vertical)
 
+# CORRELACIONES CUASIDIAGONALIZADAS
+corr_quasidiag_HRP = corr_matrix.loc[Sigma_quasidiag_HRP.index, Sigma_quasidiag_HRP.columns]
+corr_quasidiag_HERC = corr_matrix.loc[Sigma_quasidiag_HERC.index, Sigma_quasidiag_HERC.columns]
+
 # DENDROGRAMAS
 plot_dendrogram(
-    links_vertical_HRP, 
-    labels=etfs_vertical, 
-    title="HRP - Dendrograma de ETFs (Single Linkage)",
-    save_path="dendrograma_HRP.pdf"
+    links_vertical_HRP, labels=etfs_vertical, 
+    title="HRP - Dendrograma de ETFs (Single Linkage)", save_path="dendrograma_HRP.pdf"
 )
 
 plot_dendrogram(
-    links_vertical_HERC, 
-    labels=etfs_vertical, 
-    title="HERC - Dendrograma de ETFs (Ward Linkage)",
-    save_path="dendrograma_HERC.pdf"
+    links_vertical_HERC, labels=etfs_vertical, 
+    title="HERC - Dendrograma de ETFs (Ward Linkage)", save_path="dendrograma_HERC.pdf"
 )
 
-# HEATMAPS DE COVARIANZAS
+# HEATMAPS DE CORRELACIONES
 plot_matrix_heatmap(
-    pd.DataFrame(Sigma, index=etfs_vertical, columns=etfs_vertical), 
-    title=f'Heatmap Covarianzas ({ratio_vertical}) - Original',
-    save_path="heatmap_cov_original.pdf"
+    corr_matrix, 
+    title=f'Correlaciones ({ratio_vertical}) - Original',
+    save_path="heatmap_corr_original.pdf"
 )
 
 plot_matrix_heatmap(
-    Sigma_quasidiag_HRP, 
-    title=f'Heatmap Covarianzas Cuasidiagonalizada ({ratio_vertical}) - HRP',
-    save_path="heatmap_cov_HRP.pdf"
+    corr_quasidiag_HRP, 
+    title=f'Correlaciones Cuasidiagonalizada ({ratio_vertical}) - HRP',
+    save_path="heatmap_corr_HRP.pdf"
 )
 
 plot_matrix_heatmap(
-    Sigma_quasidiag_HERC, 
-    title=f'Heatmap Covarianzas Cuasidiagonalizada ({ratio_vertical}) - HERC',
-    save_path="heatmap_cov_HERC.pdf"
+    corr_quasidiag_HERC, 
+    title=f'Correlaciones Cuasidiagonalizada ({ratio_vertical}) - HERC',
+    save_path="heatmap_corr_HERC.pdf"
 )
+
+# CLUSTERMAPS (DENDROGRAMA + HEATMAP)
+plot_dendrogram_heatmap(
+    corr_matrix, link=links_vertical_HRP, 
+    title=f"HRP - Estructura Jerárquica y Correlación (Single Linkage) | {ratio_vertical}", save_path="clustermap_HRP.pdf"
+)
+
+plot_dendrogram_heatmap(
+    corr_matrix, link=links_vertical_HERC, 
+    title=f"HERC - Estructura Jerárquica y Correlación (Ward Linkage) | {ratio_vertical}", save_path="clustermap_HERC.pdf"
+)
+
 print(f"\nTop {K} ETFs del día {VERTICAL_DATE.date()} según el ratio {ratio_vertical}: {etfs_vertical}")
     
 # PESOS (w)
