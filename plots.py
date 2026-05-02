@@ -8,12 +8,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import matplotlib.dates as mdates
+import matplotlib.patches as mpatches
 import scipy.cluster.hierarchy as sch
-import seaborn as sns
-import math
 import numpy as np
+import seaborn as sns
+from matplotlib.colors import ListedColormap
 
-# Configuración base para todos los plots
 def set_latex_style():
     plt.rcParams.update({
         'font.family': 'serif',
@@ -78,11 +78,15 @@ def plot_efficient_frontier(df_efficient_frontier, opt_sharpe, opt_vol, mean_ret
 
 def plot_cumulative_returns(diccionario_riqueza: dict):
     set_latex_style()
+    
     metrics_map = {
-        'SR': 'SR', 'SR_corr': 'SR*', 'MSR': 'MSR', 'VaRR1': 'VaRR$_{1\%}$', 
-        'VaRR5': 'VaRR$_{5\%}$', 'VaRR10': 'VaRR$_{10\%}$', 'Omega': 'Omega', 
-        'UPR': 'UPR', 'Kappa3': 'Kappa3', 'Sortino': 'Sortino', 'GR1': 'GR$_1$', 'GR5': 'GR$_5$'
+        'SR': 'SR', 'SR_corr': 'SR$_{\\rho}$', 'MSR': 'MSR', 'VaRR1': r'VaRR$_{1\%}$', 
+        'VaRR5': r'VaRR$_{5\%}$', 'VaRR10': r'VaRR$_{10\%}$', 'Omega': 'Omega', 
+        'UPR': 'UPR', 'Kappa3': 'Kappa3', 'Sortino': 'Sortino', 'GR1': r'GR$_1$', 'GR5': r'GR$_5$'
     }
+    
+    cmap = plt.get_cmap('tab20')
+    color_dict = {key: cmap(i) for i, key in enumerate(metrics_map.keys())}
 
     rows, cols = 4, 3
     fig, axes = plt.subplots(rows, cols, figsize=(16, 18), squeeze=False)
@@ -92,36 +96,47 @@ def plot_cumulative_returns(diccionario_riqueza: dict):
         ax = axes[idx]
         spread_bruta = (values[0] - values[1])
         spread_neta = (values[2] - values[1])
+        
+        metric_color = color_dict.get(raw_title, 'blue')
 
-        ax.plot(spread_bruta, label='Exceso Bruto', color='black', linestyle='-', linewidth=1.1)
-        ax.plot(spread_neta, label='Exceso Neto', color='black', linestyle=':', linewidth=1.6)
-        ax.axhline(0, color='gray', linewidth=0.8, alpha=0.5)
+        ax.plot(spread_bruta, label='Exceso de Riqueza', color='black', linestyle='--', linewidth=1.2)
+        ax.plot(spread_neta, label='Exceso de Riqueza con costes', color=metric_color, linestyle='-', linewidth=1.8)
+        
+        ax.axhline(0, color='black', linewidth=0.8, alpha=0.8)
         
         ax.set_title(metrics_map.get(raw_title, raw_title), fontsize=13, fontweight='bold')
         ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
-        ax.legend(fontsize=8, frameon=False)
+        ax.legend(fontsize=9, loc='lower left', frameon=False)
 
     plt.tight_layout(pad=4.0)
     plt.savefig("cumulative_spread_returns.pdf", format='pdf', bbox_inches='tight', transparent=True)
     plt.show()
+    return {}
 
 def plot_turnover_frequency(diccionario_frecuencia: dict, save_path: str = "turnover_frequency.pdf"):
     set_latex_style()
-    fig, axes = plt.subplots(4, 3, figsize=(12, 14))
-    axes = axes.flatten()
     
     metrics_map = {
-        'SR': 'SR', 'SR_corr': 'SR*', 'MSR': 'MSR', 'VaRR1': 'VaRR$_{1\%}$', 
-        'VaRR5': 'VaRR$_{5\%}$', 'VaRR10': 'VaRR$_{10\%}$', 'Omega': 'Omega', 
-        'UPR': 'UPR', 'Kappa3': 'Kappa3', 'Sortino': 'Sortino', 'GR1': 'GR$_1$', 'GR5': 'GR$_5$'
+        'SR': 'SR', 'SR_corr': 'SR$_{\\rho}$', 'MSR': 'MSR', 'VaRR1': r'VaRR$_{1\%}$', 
+        'VaRR5': r'VaRR$_{5\%}$', 'VaRR10': r'VaRR$_{10\%}$', 'Omega': 'Omega', 
+        'UPR': 'UPR', 'Kappa3': 'Kappa3', 'Sortino': 'Sortino', 'GR1': r'GR$_1$', 'GR5': r'GR$_5$'
     }
+    
+    cmap = plt.get_cmap('tab20')
+    color_dict = {key: cmap(i) for i, key in enumerate(metrics_map.keys())}
+
+    fig, axes = plt.subplots(4, 3, figsize=(12, 14), sharey=True)
+    axes = axes.flatten()
 
     for i, (col, title) in enumerate(metrics_map.items()):
         ax = axes[i]
         serie = diccionario_frecuencia[col]
-        ax.bar(serie.index, serie.values, color="#404040", edgecolor="white", width=1.0)
+        
+        # Aplicamos el color asignado a la métrica
+        ax.bar(serie.index, serie.values, color=color_dict[col], edgecolor="black", linewidth=0.5, width=1.0)
+        
         ax.set_title(title, fontweight='bold')
         ax.set_xlim(-0.5, 20.5)
         ax.grid(axis='y', linestyle='--', alpha=0.3)
@@ -131,6 +146,7 @@ def plot_turnover_frequency(diccionario_frecuencia: dict, save_path: str = "turn
     plt.tight_layout(pad=3.0)
     plt.savefig(save_path, format='pdf', bbox_inches='tight', transparent=True)
     plt.show()
+    return {}
 
 def plot_robustness_analysis(titulo: str, lineas: dict):
     set_latex_style()
@@ -150,7 +166,15 @@ def plot_robustness_analysis(titulo: str, lineas: dict):
 
 def plot_selection_spreads(diccionario_riqueza, fechas_oos, perfiles, ratios, benchmark='SR'):
     set_latex_style()
-    cmap = plt.get_cmap('tab20')
+    
+    metrics_map = {
+        'SR': 'SR', 'SR_corr': r'SR$_{\rho}$', 'MSR': 'MSR', 'VaRR1': r'VaRR$_{1\%}$', 
+        'VaRR5': r'VaRR$_{5\%}$', 'VaRR10': r'VaRR$_{10\%}$', 'Omega': 'Omega', 
+        'UPR': 'UPR', 'Kappa3': 'Kappa3', 'Sortino': 'Sortino', 'GR1': r'GR$_1$', 'GR5': r'GR$_5$'
+    }
+    
+    cmap_ratios = plt.get_cmap('tab20')
+    color_dict = {key: cmap_ratios(i) for i, key in enumerate(metrics_map.keys())}
     
     rows, cols = 4, 2
     fig, axes = plt.subplots(rows, cols, figsize=(14, 18))
@@ -159,23 +183,38 @@ def plot_selection_spreads(diccionario_riqueza, fechas_oos, perfiles, ratios, be
     for i, base_strategy in enumerate(perfiles):
         ax = axes[i]
         riqueza_base = diccionario_riqueza[benchmark][base_strategy]
+        
         for j, ratio in enumerate(ratios):
             spread = diccionario_riqueza[ratio][base_strategy] - riqueza_base
-            ax.plot(spread.index, spread.values, linewidth=1.2, color=cmap(j), label=f'{ratio}-{benchmark}')
+            
+            label_limpio = metrics_map.get(ratio, ratio)
+            color_ratio = color_dict.get(ratio, cmap_ratios(j)) 
+            ax.plot(spread.index, spread.values, linewidth=1.2, color=color_ratio, label=label_limpio)
 
         ax.axhline(0, color='black', linestyle='--', linewidth=1)
-        ax.set_title(f'Base: {base_strategy}', fontweight='bold')
-        ax.legend(fontsize=7, loc='upper left', ncol=2, frameon=False)
+        
+        ax.set_title(f'Weight Strategy: {base_strategy} (Spread w.r.t. {benchmark})', fontsize=12, fontweight='bold')
+        
+        ax.legend(fontsize=8, loc='upper left', ncol=2, frameon=False)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
 
-    plt.tight_layout()
+    plt.tight_layout(pad=3.0)
     plt.savefig("selection_spreads.pdf", format='pdf', bbox_inches='tight', transparent=True)
+    plt.show()
     return {}
 
 def plot_allocation_spreads(diccionario_riqueza, fechas_oos, ratios, perfiles, benchmark='EW'):
     set_latex_style()
-    cmap = plt.get_cmap('tab20')
+    
+    metrics_map = {
+        'SR': 'SR', 'SR_corr': r'SR$_{\rho}$', 'MSR': 'MSR', 'VaRR1': r'VaRR$_{1\%}$', 
+        'VaRR5': r'VaRR$_{5\%}$', 'VaRR10': r'VaRR$_{10\%}$', 'Omega': 'Omega', 
+        'UPR': 'UPR', 'Kappa3': 'Kappa3', 'Sortino': 'Sortino', 'GR1': r'GR$_1$', 'GR5': r'GR$_5$'
+    }
+    
+    cmap_perfiles = plt.get_cmap('tab10') 
+    
     rows, cols = 4, 3
     fig, axes = plt.subplots(rows, cols, figsize=(18, 18))
     axes = axes.flatten()
@@ -183,18 +222,65 @@ def plot_allocation_spreads(diccionario_riqueza, fechas_oos, ratios, perfiles, b
     for idx, ratio in enumerate(ratios):
         ax = axes[idx]
         riqueza_base = diccionario_riqueza[ratio][benchmark]
+        
         for j, strat in enumerate(perfiles):
             spread = diccionario_riqueza[ratio][strat] - riqueza_base
-            ax.plot(spread.index, spread.values, linewidth=1.2, color=cmap(j), label=f'{strat}-{benchmark}')
+            ax.plot(spread.index, spread.values, linewidth=1.2, color=cmap_perfiles(j), label=strat)
 
         ax.axhline(0, color='black', linestyle='--', linewidth=1)
-        ax.set_title(f'Ratio: {ratio}', fontweight='bold')
-        ax.legend(fontsize=7, loc='lower left', ncol=2, frameon=False)
+        
+        titulo_ratio = metrics_map.get(ratio, ratio)
+        
+        ax.set_title(f'Performance Strategy: {titulo_ratio} (Spread w.r.t. {benchmark})', fontsize=12, fontweight='bold')
+        
+        ax.legend(fontsize=8, loc='lower left', ncol=2, frameon=False)
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
 
-    plt.tight_layout()
+    plt.tight_layout(pad=3.0)
     plt.savefig("allocation_spreads.pdf", format='pdf', bbox_inches='tight', transparent=True)
+    plt.show()
+    return {}
+
+def plot_single_selection_spread(diccionario_riqueza, ratios, base_strategy='EW', benchmark='SR'):
+    """
+    Extrae un único cuadrante (estrategia base) y lo plotea en formato grande.
+    """
+    set_latex_style()
+    cmap = plt.get_cmap('tab20')
+    
+    fig, ax = plt.subplots(figsize=(10, 6))
+    riqueza_base = diccionario_riqueza[benchmark][base_strategy]
+    for j, ratio in enumerate(ratios):
+        spread = diccionario_riqueza[ratio][base_strategy] - riqueza_base
+        ax.plot(spread.index, spread.values, linewidth=1.5, color=cmap(j), label=f'{ratio}-{benchmark}')
+
+    ax.axhline(0, color='black', linestyle='--', linewidth=1)
+    ax.legend(fontsize=9, loc='upper left', ncol=3, frameon=False)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    plt.tight_layout()
+    plt.savefig(f"selection_spread_single_{base_strategy}.pdf", format='pdf', bbox_inches='tight', transparent=True)
+    return {}
+
+def plot_single_allocation_spread(diccionario_riqueza, perfiles, ratio='SR', benchmark='EW'):
+    
+    set_latex_style()
+    cmap = plt.get_cmap('tab20')
+    fig, ax = plt.subplots(figsize=(10, 6))
+    riqueza_base = diccionario_riqueza[ratio][benchmark]
+    for j, strat in enumerate(perfiles):
+        spread = diccionario_riqueza[ratio][strat] - riqueza_base
+        ax.plot(spread.index, spread.values, linewidth=1.5, color=cmap(j), label=f'{strat}-{benchmark}')
+
+    ax.axhline(0, color='black', linestyle='--', linewidth=1)
+    ax.legend(fontsize=9, loc='lower left', ncol=4, frameon=False)
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+
+    plt.tight_layout()
+    plt.savefig(f"allocation_spread_single_{ratio}.pdf", format='pdf', bbox_inches='tight', transparent=True)
     return {}
 
 def plot_mhi(mhi_history, fechas_oos, ratios, perfiles):
@@ -276,22 +362,93 @@ def plot_coincidence_heatmap(matrix: pd.DataFrame, save_path: str = "coincidence
     plt.savefig(save_path, format='pdf', bbox_inches='tight', transparent=True)
     plt.show()
 
-def plot_survival_heatmap(all_stats_dict):
+def plot_survival_heatmap(all_stats_dict: dict, ticker_to_macrofamily: dict, save_path: str = "survival_heatmap.pdf"):
     set_latex_style()
+    
     metrics_order = ['SR', 'SR_corr', 'MSR', 'Sortino', 'Kappa3', 'Omega', 'VaRR1', 'VaRR5', 'VaRR10', 'UPR', 'GR1', 'GR5']
-    labels = {'VaRR1': 'VaRR$_{1\%}$', 'VaRR5': 'VaRR$_{5\%}$', 'VaRR10': 'VaRR$_{10\%}$', 'GR1': 'GR$_1$', 'GR5': 'GR$_5$', 'SR_corr': 'SR*'}
+    labels = {
+        'VaRR1': r'VaRR$_{1\%}$', 'VaRR5': r'VaRR$_{5\%}$', 'VaRR10': r'VaRR$_{10\%}$', 
+        'GR1': r'GR$_1$', 'GR5': r'GR$_5$', 'SR_corr': r'SR$_{\rho}$'
+    }
 
-    survival_matrix = [all_stats_dict[m].head(5)['Survival_Rate'].values * 100 for m in metrics_order]
-    ticker_matrix = [all_stats_dict[m].head(5)['Ticker'].values for m in metrics_order]
+    family_colors = {
+        "Value": "#aec7e8",               
+        "Growth": "#98df8a",              
+        "Dividend": "#ffbb78",            
+        "Low Volatility": "#c5b0d5",      
+        "Defensive": "#ff9896",    
+        "Fundamental": "#c49c94",    
+        "ESG": "#f7b6d2",
+        "Alternative": "#c7c7c7"
+    }
+    
+    families_list = list(family_colors.keys())
+    family_to_int = {fam: i for i, fam in enumerate(families_list)}
+    
+    cmap = ListedColormap([family_colors[fam] for fam in families_list])
 
-    survival_df = pd.DataFrame(survival_matrix, index=[labels.get(m, m) for m in metrics_order], columns=['1º', '2º', '3º', '4º', '5º'])
+    color_matrix = []
+    annot_matrix = []
 
-    plt.figure(figsize=(11, 8))
-    sns.heatmap(survival_df, annot=np.array(ticker_matrix), fmt="", cmap="Blues", linewidths=0.5, annot_kws={"size": 10, "fontweight": "bold"})
+    for m in metrics_order:
+        df_top5 = all_stats_dict[m].head(5)
+        
+        row_colors = []
+        row_annots = []
+        
+        for _, row in df_top5.iterrows():
+            ticker = row['Ticker']
+            med_pos = row['Median_Position']
+            
+            family = ticker_to_macrofamily.get(ticker, "Alternative")
+            row_colors.append(family_to_int[family])
+            row_annots.append(f"{ticker}\n({med_pos:.1f}º)")
+            
+        color_matrix.append(row_colors)
+        annot_matrix.append(row_annots)
+
+    color_df = pd.DataFrame(
+        color_matrix, 
+        index=[labels.get(m, m) for m in metrics_order], 
+        columns=['', '', '', '', ''] 
+    )
+
+    fig, ax = plt.subplots(figsize=(12, 8))
+    
+    sns.heatmap(
+        color_df, 
+        annot=np.array(annot_matrix), 
+        fmt="", 
+        cmap=cmap, 
+        vmin=0, vmax=len(families_list)-1, 
+        linewidths=0.5, 
+        linecolor='white',
+        cbar=False, 
+        annot_kws={"size": 11, "fontweight": "bold"}, 
+        ax=ax
+    )
+    
+    ax.tick_params(axis='x', length=0)
+
+    legend_patches = [
+        mpatches.Patch(color=color, label=fam.replace('_', ' ')) 
+        for fam, color in family_colors.items()
+    ]
+    
+    ax.legend(
+        handles=legend_patches, 
+        bbox_to_anchor=(1.02, 1), 
+        loc='upper left', 
+        borderaxespad=0., 
+        frameon=False, 
+        title="Familias Smart Beta",
+        title_fontproperties={'weight': 'bold', 'size': 11}
+    )
     
     plt.tight_layout()
-    plt.savefig("survival_heatmap.pdf", format='pdf', bbox_inches='tight', transparent=True)
+    plt.savefig(save_path, format='pdf', bbox_inches='tight', transparent=True)
     plt.show()
+    return {}
     
 def plot_dendrogram_heatmap(corr_matrix: pd.DataFrame, link: np.ndarray, title: str, save_path: str = "clustermap.pdf"):
     set_latex_style()

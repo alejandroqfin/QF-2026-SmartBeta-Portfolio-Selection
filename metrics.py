@@ -141,7 +141,7 @@ def replacement_rate(
 def etf_stats(target_ids_matrix: np.ndarray, tickers_list: list) -> pd.DataFrame:
     """
     Calcula la tasa de supervivencia (frecuencia)
-    y la posición media para el universo de N ETFs.
+    y la posición mediana para el universo de N ETFs.
     """
     T, K = target_ids_matrix.shape
     N = len(tickers_list)
@@ -149,21 +149,23 @@ def etf_stats(target_ids_matrix: np.ndarray, tickers_list: list) -> pd.DataFrame
     days_active = np.bincount(target_ids_matrix.flatten(), minlength=N)
     survival_rate = days_active / T
 
-    # Número de veces que el ETF i ocupó el rango j
+    median_rank = np.full(N, np.nan)
+    for i in range(N):
+        if days_active[i] > 0:
+            # np.where devuelve (rows, cols). Extraemos las columnas (posiciones 0 a K-1)
+            # Sumamos 1 para que el rango sea natural (de 1 a K)
+            posiciones = np.where(target_ids_matrix == i)[1] + 1
+            median_rank[i] = np.median(posiciones)
+
     position_counts = np.zeros((N, K), dtype=int)
     for pos in range(K):
         position_counts[:, pos] = np.bincount(target_ids_matrix[:, pos], minlength=N)
-
-    weighted_sum = position_counts @ np.arange(1, K + 1)
-
-    safe_days = np.where(days_active == 0, 1, days_active)
-    mean_rank = np.where(days_active > 0, weighted_sum / safe_days, np.nan)
 
     df_survival = pd.DataFrame({
         'Ticker': tickers_list,
         'Days_Active': days_active,
         'Survival_Rate': survival_rate,
-        'Average_Position': mean_rank
+        'Median_Position': median_rank
     })
 
     df_positions = pd.DataFrame(position_counts, columns=[f'Top_{i+1}' for i in range(K)])

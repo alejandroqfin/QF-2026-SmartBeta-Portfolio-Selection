@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import joblib
 from screening import ROLLING_WINDOW_RANKINGS
 from metrics import risk_contribution, allocation_model_with_costs, MHI, maxDrawDown
-from plots import plot_allocation_spreads, plot_selection_spreads, plot_mhi, plot_robustness_analysis, plot_dendrogram, plot_matrix_heatmap, plot_dendrogram_heatmap
+from plots import plot_allocation_spreads, plot_selection_spreads, plot_mhi, plot_robustness_analysis, plot_dendrogram, plot_matrix_heatmap, plot_dendrogram_heatmap, plot_single_allocation_spread, plot_single_selection_spread
 from portfolios import W_EW, W_VT, W_RRT, W_GMV, W_ERC, W_MVS, W_HRP, W_HERC
 from hrp import HRP, HERC
 
@@ -338,9 +338,11 @@ resultados_oos = pd.DataFrame({
 
 # I) QUÉ RATIO ELIGE MEJOR?
 selection_spreads_vs_sr_benchmark = plot_selection_spreads(diccionario_riqueza=riqueza_oos_por_ratio, fechas_oos=T, perfiles=perfiles, ratios=[r for r in ratios if r != 'SR'])
+plot_single_selection_spread(diccionario_riqueza=riqueza_oos_por_ratio, ratios=[r for r in ratios if r != 'SR'], base_strategy=perfiles[0], benchmark='SR')
 
 # II) QUÉ CARTERA DISTRIBUYE MEJOR EL CAPITAL?
 allocation_spreads_vs_ew_benchmark = plot_allocation_spreads(diccionario_riqueza=riqueza_oos_por_ratio, fechas_oos=T, ratios=ratios, perfiles=perfiles)
+plot_single_allocation_spread(diccionario_riqueza=riqueza_oos_por_ratio, perfiles=perfiles, ratio=ratios[0], benchmark='EW')
 
 # III) EVOLUCIÓN DEL ÍNDICE DE HERFINDAHL (MHI)
 mhi_spreads_by_ratio = plot_mhi(mhi_history=mhi_history, fechas_oos=T, ratios=ratios, perfiles=perfiles)
@@ -445,29 +447,38 @@ ids_matrix_robustez = rankings[ratio_robustez]
 # ANÁLISIS DE ROBUSTEZ - TAMAÑO DE VENTANA (M vs M2)
 M2 = 2500
 
-# RECALCULAMOS LOS RANKINGS PARA LA NUEVA VENTANA
-rankings_M2500, _ = ROLLING_WINDOW_RANKINGS(df_rendimientos, OOS_START_DATE, K, [ratio_robustez], M=M2)
+print(f"\nIniciando Análisis de Robustez (M={M} vs M={M2})...")
 
-# ALINEAMOS ÍNDICES
-ranking_rob = rankings_M2500[ratio_robustez]
-t_rob = ranking_rob.index.get_indexer(T)
-t_anterior_rob = np.maximum(0, t_rob - 1)
-ids_matrix_robustez_M2500 = (ranking_rob.iloc[t_anterior_rob].values - 1).astype(int)
+# Definimos un nuevo horizonte (T_rob) que empiece estrictamente en el día M2 (2500)
+T_rob = df_rendimientos.index[df_rendimientos.index >= df_rendimientos.index[M2]]
+t_indices_rob = df_rendimientos.index.searchsorted(T_rob)
 
-# CARTERA CON M = 1000
+# Recalculamos los rankings EXCLUSIVAMENTE para la ventana de M2500 a partir de esa fecha
+rankings_M2500, _ = ROLLING_WINDOW_RANKINGS(df_rendimientos, T_rob[0], K, [ratio_robustez], M=M2)
+ranking_rob_df = rankings_M2500[ratio_robustez]
+
+# Alineamos los IDs de M=2500 con las fechas T_rob
+t_rob_idx = ranking_rob_df.index.get_indexer(T_rob)
+t_anterior_rob = np.maximum(0, t_rob_idx - 1)
+ids_matrix_robustez_M2500 = (ranking_rob_df.iloc[t_anterior_rob].values - 1).astype(int)
+
+# Alineamos los IDs que ya teníamos de M=1000 recortando los primeros días que sobran
+offset = len(T) - len(T_rob)
+ids_matrix_robustez_M1000 = ids_matrix_robustez[offset:]
+
+# Simulamos ambas carteras sobre el MISMO periodo de tiempo (T_rob)
 rendimientos_M1000, riqueza_M1000 = allocation_model_with_costs(
-    T, t_indices, M, K, rendimientos, ids_matrix_robustez, modelo_robustez, cartera_robustez, c=c)
+    T_rob, t_indices_rob, M, K, rendimientos, ids_matrix_robustez_M1000, modelo_robustez, cartera_robustez, c=c)
 
-# CARTERA CON M = 2500
 rendimientos_M2500, riqueza_M2500 = allocation_model_with_costs(
-    T, t_indices, M2, K, rendimientos, ids_matrix_robustez_M2500, modelo_robustez, cartera_robustez, c=c)
+    T_rob, t_indices_rob, M2, K, rendimientos, ids_matrix_robustez_M2500, modelo_robustez, cartera_robustez, c=c)
 
-# GRÁFICO COMPARACIÓN VENTANAS IN-SAMPLE
+# 4. Gráfico Comparativo
 plot_robustness_analysis(
     f'Gráfico comparativo (M) para ({cartera_robustez} + {ratio_robustez})',
     {
-        f'M = {M}': pd.Series(riqueza_M1000, index=T),
-        f'M = {M2}': pd.Series(riqueza_M2500, index=T) 
+        f'M = {M}': pd.Series(riqueza_M1000, index=T_rob),
+        f'M = {M2}': pd.Series(riqueza_M2500, index=T_rob) 
     }
 )
 
@@ -490,7 +501,7 @@ plot_robustness_analysis(
         'Gamma = 10': pd.Series(riqueza_MVS_g10, index=T)})
 
 plt.show()
-"""
+
 # EXPORTAMOS RESULTADOS A EXCEL
 with pd.ExcelWriter(OUTPUT_FILE, engine='openpyxl') as writer:
     
@@ -516,4 +527,3 @@ with pd.ExcelWriter(OUTPUT_FILE, engine='openpyxl') as writer:
     resultados_oos.to_excel(writer, sheet_name='Rendimientos_OOS')
 
 print(f"\nCálculos completados exitosamente. Archivo guardado en: {OUTPUT_FILE}")
-"""

@@ -17,7 +17,6 @@ from portfolios import W_EW
 INPUT_FILE = "100_ETFs_Smart_Beta.xlsx"
 OUTPUT_FILE = "100_ETFs_Screening.xlsx"
 VARIABLES_FILE = "screening_artifacts.joblib"
-OOS_START_DATE = pd.to_datetime('2023-01-03')
 
 # ETFs EN CARTERA
 K = 20
@@ -28,6 +27,20 @@ M = 1000
 # COSTES DE TRANSACCIÓN
 c = 0.0020
 
+# FAMILIAS SMART BETAS
+SMART_BETA_FAMILIES = {
+    "Value": ["VTV", "IVE", "IWD", "IWN", "IJJ", "IJS", "IUSV", "VOE", "IWS", "IWX", "MGV", "RPV", "VIOV", "SCHV", "SPYV", "ILCV", "IMCV", "ISCV", "PWV", "RFV", "RZV", "EFV", "VOOV", "VBR"],
+    "Growth": ["DNL", "VUG", "IWF", "IVW", "SCHG", "SPYG", "IUSG", "IJK", "IJT", "IWO", "IWP", "IWY", "MDYG", "VBK", "VONG", "VOOG", "VOT", "ILCG", "IMCG", "ISCG", "RFG", "RPG", "RZG", "EFG"],
+    "Dividend": ["VIG", "VYM", "SCHD", "DVY", "SDY", "HDV", "DHS", "DLN", "DON", "DTD", "DTN", "FVD", "PFM", "DES", "DLS", "DEW", "DFE", "DFJ", "DIM", "DTH", "DOL", "DWM"],
+    "Low Volatility": ["USMV", "SPLV", "EFAV", "EEMV", "ACWV", "EELV"],
+    "Defensive": ["SPHQ", "PKW", "FTCS", "MOAT", "QDEF", "PDP", "PIZ"],
+    "Fundamental": ["PRF", "PXF", "PXH", "PRFZ", "EZM", "EES"],
+    "ESG": ["TILT", "FEM", "FEMS", "SUSA", "DSI"],
+    "Alternative": ["IYY", "FDN", "FPX", "KIE", "RSP", "DEF"]
+}
+
+ticker_to_macrofamily = {ticker: family for family, tickers in SMART_BETA_FAMILIES.items() for ticker in tickers}
+
 # EXTRAEMOS PRECIOS (P_T): (M + T X 100)
 df_precios = pd.read_excel(INPUT_FILE, sheet_name='Precios_Historicos', index_col=0, header=1)
 df_precios = df_precios.iloc[1:]
@@ -36,6 +49,7 @@ df_precios = df_precios.astype(float)
 
 # RENDIMIENTOS ARITMÉTICOS (P_T / P_T-1 - 1): (M + T - 1 X 100)
 df_rendimientos = df_precios.pct_change().dropna(how='all')
+OOS_START_DATE = df_rendimientos.index[M]
 
 # ASIGNAMOS UN ID NUMÉRICO A CADA ETF (DEL 1 A 100)
 tickers = df_rendimientos.columns.tolist()
@@ -775,101 +789,103 @@ print(f"      5. {stats_GR5.iloc[4]['Ticker']:<10} ({stats_GR5.iloc[4]['Survival
 
 print("\nTop 5 ETFs con mejor posición media en el ranking:")
 
+print("\nTop 5 ETFs con mejor posición mediana en el ranking:")
+
 # 1. SHARPE RATIO
 print("\n   ► Sharpe Ratio:")
-print(f"      1. {stats_SR.iloc[0]['Ticker']:<10} (Posición media: {stats_SR.iloc[0]['Average_Position']:.2f}º)")
-print(f"      2. {stats_SR.iloc[1]['Ticker']:<10} (Posición media: {stats_SR.iloc[1]['Average_Position']:.2f}º)")
-print(f"      3. {stats_SR.iloc[2]['Ticker']:<10} (Posición media: {stats_SR.iloc[2]['Average_Position']:.2f}º)")
-print(f"      4. {stats_SR.iloc[3]['Ticker']:<10} (Posición media: {stats_SR.iloc[3]['Average_Position']:.2f}º)")
-print(f"      5. {stats_SR.iloc[4]['Ticker']:<10} (Posición media: {stats_SR.iloc[4]['Average_Position']:.2f}º)")
+print(f"      1. {stats_SR.iloc[0]['Ticker']:<10} (Posición mediana: {stats_SR.iloc[0]['Median_Position']:.2f}º)")
+print(f"      2. {stats_SR.iloc[1]['Ticker']:<10} (Posición mediana: {stats_SR.iloc[1]['Median_Position']:.2f}º)")
+print(f"      3. {stats_SR.iloc[2]['Ticker']:<10} (Posición mediana: {stats_SR.iloc[2]['Median_Position']:.2f}º)")
+print(f"      4. {stats_SR.iloc[3]['Ticker']:<10} (Posición mediana: {stats_SR.iloc[3]['Median_Position']:.2f}º)")
+print(f"      5. {stats_SR.iloc[4]['Ticker']:<10} (Posición mediana: {stats_SR.iloc[4]['Median_Position']:.2f}º)")
 
 # 2. SHARPE CORRELATION
 print("\n   ► Sharpe Correlation:")
-print(f"      1. {stats_SR_corr.iloc[0]['Ticker']:<10} (Posición media: {stats_SR_corr.iloc[0]['Average_Position']:.2f}º)")
-print(f"      2. {stats_SR_corr.iloc[1]['Ticker']:<10} (Posición media: {stats_SR_corr.iloc[1]['Average_Position']:.2f}º)")
-print(f"      3. {stats_SR_corr.iloc[2]['Ticker']:<10} (Posición media: {stats_SR_corr.iloc[2]['Average_Position']:.2f}º)")
-print(f"      4. {stats_SR_corr.iloc[3]['Ticker']:<10} (Posición media: {stats_SR_corr.iloc[3]['Average_Position']:.2f}º)")
-print(f"      5. {stats_SR_corr.iloc[4]['Ticker']:<10} (Posición media: {stats_SR_corr.iloc[4]['Average_Position']:.2f}º)")
+print(f"      1. {stats_SR_corr.iloc[0]['Ticker']:<10} (Posición mediana: {stats_SR_corr.iloc[0]['Median_Position']:.2f}º)")
+print(f"      2. {stats_SR_corr.iloc[1]['Ticker']:<10} (Posición mediana: {stats_SR_corr.iloc[1]['Median_Position']:.2f}º)")
+print(f"      3. {stats_SR_corr.iloc[2]['Ticker']:<10} (Posición mediana: {stats_SR_corr.iloc[2]['Median_Position']:.2f}º)")
+print(f"      4. {stats_SR_corr.iloc[3]['Ticker']:<10} (Posición mediana: {stats_SR_corr.iloc[3]['Median_Position']:.2f}º)")
+print(f"      5. {stats_SR_corr.iloc[4]['Ticker']:<10} (Posición mediana: {stats_SR_corr.iloc[4]['Median_Position']:.2f}º)")
 
 # 3. MARGINAL SHARPE RATIO
 print("\n   ► Marginal Sharpe Ratio (MSR):")
-print(f"      1. {stats_MSR.iloc[0]['Ticker']:<10} (Posición media: {stats_MSR.iloc[0]['Average_Position']:.2f}º)")
-print(f"      2. {stats_MSR.iloc[1]['Ticker']:<10} (Posición media: {stats_MSR.iloc[1]['Average_Position']:.2f}º)")
-print(f"      3. {stats_MSR.iloc[2]['Ticker']:<10} (Posición media: {stats_MSR.iloc[2]['Average_Position']:.2f}º)")
-print(f"      4. {stats_MSR.iloc[3]['Ticker']:<10} (Posición media: {stats_MSR.iloc[3]['Average_Position']:.2f}º)")
-print(f"      5. {stats_MSR.iloc[4]['Ticker']:<10} (Posición media: {stats_MSR.iloc[4]['Average_Position']:.2f}º)")
+print(f"      1. {stats_MSR.iloc[0]['Ticker']:<10} (Posición mediana: {stats_MSR.iloc[0]['Median_Position']:.2f}º)")
+print(f"      2. {stats_MSR.iloc[1]['Ticker']:<10} (Posición mediana: {stats_MSR.iloc[1]['Median_Position']:.2f}º)")
+print(f"      3. {stats_MSR.iloc[2]['Ticker']:<10} (Posición mediana: {stats_MSR.iloc[2]['Median_Position']:.2f}º)")
+print(f"      4. {stats_MSR.iloc[3]['Ticker']:<10} (Posición mediana: {stats_MSR.iloc[3]['Median_Position']:.2f}º)")
+print(f"      5. {stats_MSR.iloc[4]['Ticker']:<10} (Posición mediana: {stats_MSR.iloc[4]['Median_Position']:.2f}º)")
 
 # 4. VAR RATIO 1%
 print("\n   ► VaR Ratio 1%:")
-print(f"      1. {stats_VaRR1.iloc[0]['Ticker']:<10} (Posición media: {stats_VaRR1.iloc[0]['Average_Position']:.2f}º)")
-print(f"      2. {stats_VaRR1.iloc[1]['Ticker']:<10} (Posición media: {stats_VaRR1.iloc[1]['Average_Position']:.2f}º)")
-print(f"      3. {stats_VaRR1.iloc[2]['Ticker']:<10} (Posición media: {stats_VaRR1.iloc[2]['Average_Position']:.2f}º)")
-print(f"      4. {stats_VaRR1.iloc[3]['Ticker']:<10} (Posición media: {stats_VaRR1.iloc[3]['Average_Position']:.2f}º)")
-print(f"      5. {stats_VaRR1.iloc[4]['Ticker']:<10} (Posición media: {stats_VaRR1.iloc[4]['Average_Position']:.2f}º)")
+print(f"      1. {stats_VaRR1.iloc[0]['Ticker']:<10} (Posición mediana: {stats_VaRR1.iloc[0]['Median_Position']:.2f}º)")
+print(f"      2. {stats_VaRR1.iloc[1]['Ticker']:<10} (Posición mediana: {stats_VaRR1.iloc[1]['Median_Position']:.2f}º)")
+print(f"      3. {stats_VaRR1.iloc[2]['Ticker']:<10} (Posición mediana: {stats_VaRR1.iloc[2]['Median_Position']:.2f}º)")
+print(f"      4. {stats_VaRR1.iloc[3]['Ticker']:<10} (Posición mediana: {stats_VaRR1.iloc[3]['Median_Position']:.2f}º)")
+print(f"      5. {stats_VaRR1.iloc[4]['Ticker']:<10} (Posición mediana: {stats_VaRR1.iloc[4]['Median_Position']:.2f}º)")
 
 # 5. VAR RATIO 5%
 print("\n   ► VaR Ratio 5%:")
-print(f"      1. {stats_VaRR5.iloc[0]['Ticker']:<10} (Posición media: {stats_VaRR5.iloc[0]['Average_Position']:.2f}º)")
-print(f"      2. {stats_VaRR5.iloc[1]['Ticker']:<10} (Posición media: {stats_VaRR5.iloc[1]['Average_Position']:.2f}º)")
-print(f"      3. {stats_VaRR5.iloc[2]['Ticker']:<10} (Posición media: {stats_VaRR5.iloc[2]['Average_Position']:.2f}º)")
-print(f"      4. {stats_VaRR5.iloc[3]['Ticker']:<10} (Posición media: {stats_VaRR5.iloc[3]['Average_Position']:.2f}º)")
-print(f"      5. {stats_VaRR5.iloc[4]['Ticker']:<10} (Posición media: {stats_VaRR5.iloc[4]['Average_Position']:.2f}º)")
+print(f"      1. {stats_VaRR5.iloc[0]['Ticker']:<10} (Posición mediana: {stats_VaRR5.iloc[0]['Median_Position']:.2f}º)")
+print(f"      2. {stats_VaRR5.iloc[1]['Ticker']:<10} (Posición mediana: {stats_VaRR5.iloc[1]['Median_Position']:.2f}º)")
+print(f"      3. {stats_VaRR5.iloc[2]['Ticker']:<10} (Posición mediana: {stats_VaRR5.iloc[2]['Median_Position']:.2f}º)")
+print(f"      4. {stats_VaRR5.iloc[3]['Ticker']:<10} (Posición mediana: {stats_VaRR5.iloc[3]['Median_Position']:.2f}º)")
+print(f"      5. {stats_VaRR5.iloc[4]['Ticker']:<10} (Posición mediana: {stats_VaRR5.iloc[4]['Median_Position']:.2f}º)")
 
 # 6. VAR RATIO 10%
 print("\n   ► VaR Ratio 10%:")
-print(f"      1. {stats_VaRR10.iloc[0]['Ticker']:<10} (Posición media: {stats_VaRR10.iloc[0]['Average_Position']:.2f}º)")
-print(f"      2. {stats_VaRR10.iloc[1]['Ticker']:<10} (Posición media: {stats_VaRR10.iloc[1]['Average_Position']:.2f}º)")
-print(f"      3. {stats_VaRR10.iloc[2]['Ticker']:<10} (Posición media: {stats_VaRR10.iloc[2]['Average_Position']:.2f}º)")
-print(f"      4. {stats_VaRR10.iloc[3]['Ticker']:<10} (Posición media: {stats_VaRR10.iloc[3]['Average_Position']:.2f}º)")
-print(f"      5. {stats_VaRR10.iloc[4]['Ticker']:<10} (Posición media: {stats_VaRR10.iloc[4]['Average_Position']:.2f}º)")
+print(f"      1. {stats_VaRR10.iloc[0]['Ticker']:<10} (Posición mediana: {stats_VaRR10.iloc[0]['Median_Position']:.2f}º)")
+print(f"      2. {stats_VaRR10.iloc[1]['Ticker']:<10} (Posición mediana: {stats_VaRR10.iloc[1]['Median_Position']:.2f}º)")
+print(f"      3. {stats_VaRR10.iloc[2]['Ticker']:<10} (Posición mediana: {stats_VaRR10.iloc[2]['Median_Position']:.2f}º)")
+print(f"      4. {stats_VaRR10.iloc[3]['Ticker']:<10} (Posición mediana: {stats_VaRR10.iloc[3]['Median_Position']:.2f}º)")
+print(f"      5. {stats_VaRR10.iloc[4]['Ticker']:<10} (Posición mediana: {stats_VaRR10.iloc[4]['Median_Position']:.2f}º)")
 
 # 7. OMEGA
 print("\n   ► Omega:")
-print(f"      1. {stats_Omega.iloc[0]['Ticker']:<10} (Posición media: {stats_Omega.iloc[0]['Average_Position']:.2f}º)")
-print(f"      2. {stats_Omega.iloc[1]['Ticker']:<10} (Posición media: {stats_Omega.iloc[1]['Average_Position']:.2f}º)")
-print(f"      3. {stats_Omega.iloc[2]['Ticker']:<10} (Posición media: {stats_Omega.iloc[2]['Average_Position']:.2f}º)")
-print(f"      4. {stats_Omega.iloc[3]['Ticker']:<10} (Posición media: {stats_Omega.iloc[3]['Average_Position']:.2f}º)")
-print(f"      5. {stats_Omega.iloc[4]['Ticker']:<10} (Posición media: {stats_Omega.iloc[4]['Average_Position']:.2f}º)")
+print(f"      1. {stats_Omega.iloc[0]['Ticker']:<10} (Posición mediana: {stats_Omega.iloc[0]['Median_Position']:.2f}º)")
+print(f"      2. {stats_Omega.iloc[1]['Ticker']:<10} (Posición mediana: {stats_Omega.iloc[1]['Median_Position']:.2f}º)")
+print(f"      3. {stats_Omega.iloc[2]['Ticker']:<10} (Posición mediana: {stats_Omega.iloc[2]['Median_Position']:.2f}º)")
+print(f"      4. {stats_Omega.iloc[3]['Ticker']:<10} (Posición mediana: {stats_Omega.iloc[3]['Median_Position']:.2f}º)")
+print(f"      5. {stats_Omega.iloc[4]['Ticker']:<10} (Posición mediana: {stats_Omega.iloc[4]['Median_Position']:.2f}º)")
 
 # 8. UPR
 print("\n   ► UPR:")
-print(f"      1. {stats_UPR.iloc[0]['Ticker']:<10} (Posición media: {stats_UPR.iloc[0]['Average_Position']:.2f}º)")
-print(f"      2. {stats_UPR.iloc[1]['Ticker']:<10} (Posición media: {stats_UPR.iloc[1]['Average_Position']:.2f}º)")
-print(f"      3. {stats_UPR.iloc[2]['Ticker']:<10} (Posición media: {stats_UPR.iloc[2]['Average_Position']:.2f}º)")
-print(f"      4. {stats_UPR.iloc[3]['Ticker']:<10} (Posición media: {stats_UPR.iloc[3]['Average_Position']:.2f}º)")
-print(f"      5. {stats_UPR.iloc[4]['Ticker']:<10} (Posición media: {stats_UPR.iloc[4]['Average_Position']:.2f}º)")
+print(f"      1. {stats_UPR.iloc[0]['Ticker']:<10} (Posición mediana: {stats_UPR.iloc[0]['Median_Position']:.2f}º)")
+print(f"      2. {stats_UPR.iloc[1]['Ticker']:<10} (Posición mediana: {stats_UPR.iloc[1]['Median_Position']:.2f}º)")
+print(f"      3. {stats_UPR.iloc[2]['Ticker']:<10} (Posición mediana: {stats_UPR.iloc[2]['Median_Position']:.2f}º)")
+print(f"      4. {stats_UPR.iloc[3]['Ticker']:<10} (Posición mediana: {stats_UPR.iloc[3]['Median_Position']:.2f}º)")
+print(f"      5. {stats_UPR.iloc[4]['Ticker']:<10} (Posición mediana: {stats_UPR.iloc[4]['Median_Position']:.2f}º)")
 
 # 9. KAPPA3
 print("\n   ► Kappa3:")
-print(f"      1. {stats_Kappa3.iloc[0]['Ticker']:<10} (Posición media: {stats_Kappa3.iloc[0]['Average_Position']:.2f}º)")
-print(f"      2. {stats_Kappa3.iloc[1]['Ticker']:<10} (Posición media: {stats_Kappa3.iloc[1]['Average_Position']:.2f}º)")
-print(f"      3. {stats_Kappa3.iloc[2]['Ticker']:<10} (Posición media: {stats_Kappa3.iloc[2]['Average_Position']:.2f}º)")
-print(f"      4. {stats_Kappa3.iloc[3]['Ticker']:<10} (Posición media: {stats_Kappa3.iloc[3]['Average_Position']:.2f}º)")
-print(f"      5. {stats_Kappa3.iloc[4]['Ticker']:<10} (Posición media: {stats_Kappa3.iloc[4]['Average_Position']:.2f}º)")
+print(f"      1. {stats_Kappa3.iloc[0]['Ticker']:<10} (Posición mediana: {stats_Kappa3.iloc[0]['Median_Position']:.2f}º)")
+print(f"      2. {stats_Kappa3.iloc[1]['Ticker']:<10} (Posición mediana: {stats_Kappa3.iloc[1]['Median_Position']:.2f}º)")
+print(f"      3. {stats_Kappa3.iloc[2]['Ticker']:<10} (Posición mediana: {stats_Kappa3.iloc[2]['Median_Position']:.2f}º)")
+print(f"      4. {stats_Kappa3.iloc[3]['Ticker']:<10} (Posición mediana: {stats_Kappa3.iloc[3]['Median_Position']:.2f}º)")
+print(f"      5. {stats_Kappa3.iloc[4]['Ticker']:<10} (Posición mediana: {stats_Kappa3.iloc[4]['Median_Position']:.2f}º)")
 
 # 10. SORTINO
 print("\n   ► Sortino:")
-print(f"      1. {stats_Sortino.iloc[0]['Ticker']:<10} (Posición media: {stats_Sortino.iloc[0]['Average_Position']:.2f}º)")
-print(f"      2. {stats_Sortino.iloc[1]['Ticker']:<10} (Posición media: {stats_Sortino.iloc[1]['Average_Position']:.2f}º)")
-print(f"      3. {stats_Sortino.iloc[2]['Ticker']:<10} (Posición media: {stats_Sortino.iloc[2]['Average_Position']:.2f}º)")
-print(f"      4. {stats_Sortino.iloc[3]['Ticker']:<10} (Posición media: {stats_Sortino.iloc[3]['Average_Position']:.2f}º)")
-print(f"      5. {stats_Sortino.iloc[4]['Ticker']:<10} (Posición media: {stats_Sortino.iloc[4]['Average_Position']:.2f}º)")
+print(f"      1. {stats_Sortino.iloc[0]['Ticker']:<10} (Posición mediana: {stats_Sortino.iloc[0]['Median_Position']:.2f}º)")
+print(f"      2. {stats_Sortino.iloc[1]['Ticker']:<10} (Posición mediana: {stats_Sortino.iloc[1]['Median_Position']:.2f}º)")
+print(f"      3. {stats_Sortino.iloc[2]['Ticker']:<10} (Posición mediana: {stats_Sortino.iloc[2]['Median_Position']:.2f}º)")
+print(f"      4. {stats_Sortino.iloc[3]['Ticker']:<10} (Posición mediana: {stats_Sortino.iloc[3]['Median_Position']:.2f}º)")
+print(f"      5. {stats_Sortino.iloc[4]['Ticker']:<10} (Posición mediana: {stats_Sortino.iloc[4]['Median_Position']:.2f}º)")
 
 # 11. GR1
 print("\n   ► GR1:")
-print(f"      1. {stats_GR1.iloc[0]['Ticker']:<10} (Posición media: {stats_GR1.iloc[0]['Average_Position']:.2f}º)")
-print(f"      2. {stats_GR1.iloc[1]['Ticker']:<10} (Posición media: {stats_GR1.iloc[1]['Average_Position']:.2f}º)")
-print(f"      3. {stats_GR1.iloc[2]['Ticker']:<10} (Posición media: {stats_GR1.iloc[2]['Average_Position']:.2f}º)")
-print(f"      4. {stats_GR1.iloc[3]['Ticker']:<10} (Posición media: {stats_GR1.iloc[3]['Average_Position']:.2f}º)")
-print(f"      5. {stats_GR1.iloc[4]['Ticker']:<10} (Posición media: {stats_GR1.iloc[4]['Average_Position']:.2f}º)")
+print(f"      1. {stats_GR1.iloc[0]['Ticker']:<10} (Posición mediana: {stats_GR1.iloc[0]['Median_Position']:.2f}º)")
+print(f"      2. {stats_GR1.iloc[1]['Ticker']:<10} (Posición mediana: {stats_GR1.iloc[1]['Median_Position']:.2f}º)")
+print(f"      3. {stats_GR1.iloc[2]['Ticker']:<10} (Posición mediana: {stats_GR1.iloc[2]['Median_Position']:.2f}º)")
+print(f"      4. {stats_GR1.iloc[3]['Ticker']:<10} (Posición mediana: {stats_GR1.iloc[3]['Median_Position']:.2f}º)")
+print(f"      5. {stats_GR1.iloc[4]['Ticker']:<10} (Posición mediana: {stats_GR1.iloc[4]['Median_Position']:.2f}º)")
 
 # 12. GR5
 print("\n   ► GR5:")
-print(f"      1. {stats_GR5.iloc[0]['Ticker']:<10} (Posición media: {stats_GR5.iloc[0]['Average_Position']:.2f}º)")
-print(f"      2. {stats_GR5.iloc[1]['Ticker']:<10} (Posición media: {stats_GR5.iloc[1]['Average_Position']:.2f}º)")
-print(f"      3. {stats_GR5.iloc[2]['Ticker']:<10} (Posición media: {stats_GR5.iloc[2]['Average_Position']:.2f}º)")
-print(f"      4. {stats_GR5.iloc[3]['Ticker']:<10} (Posición media: {stats_GR5.iloc[3]['Average_Position']:.2f}º)")
-print(f"      5. {stats_GR5.iloc[4]['Ticker']:<10} (Posición media: {stats_GR5.iloc[4]['Average_Position']:.2f}º)")
+print(f"      1. {stats_GR5.iloc[0]['Ticker']:<10} (Posición mediana: {stats_GR5.iloc[0]['Median_Position']:.2f}º)")
+print(f"      2. {stats_GR5.iloc[1]['Ticker']:<10} (Posición mediana: {stats_GR5.iloc[1]['Median_Position']:.2f}º)")
+print(f"      3. {stats_GR5.iloc[2]['Ticker']:<10} (Posición mediana: {stats_GR5.iloc[2]['Median_Position']:.2f}º)")
+print(f"      4. {stats_GR5.iloc[3]['Ticker']:<10} (Posición mediana: {stats_GR5.iloc[3]['Median_Position']:.2f}º)")
+print(f"      5. {stats_GR5.iloc[4]['Ticker']:<10} (Posición mediana: {stats_GR5.iloc[4]['Median_Position']:.2f}º)")
 
 all_stats_dict = {
     'SR': stats_SR,
@@ -887,7 +903,7 @@ all_stats_dict = {
 }
 
 # GRÁFICO
-plot_survival_heatmap(all_stats_dict)
+plot_survival_heatmap(all_stats_dict, ticker_to_macrofamily)
 
 # PARTE V: CREAMOS SERIES TEMPORALES DE LOS RATIOS DE PERFORMANCE
 
