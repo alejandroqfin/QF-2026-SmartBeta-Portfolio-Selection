@@ -27,7 +27,7 @@ M = 1000
 # COSTES DE TRANSACCIÓN
 c = 0.0020
 
-# FAMILIAS SMART BETAS
+# FAMILIAS SMART BETA
 SMART_BETA_FAMILIES = {
     "Value": ["VTV", "IVE", "IWD", "IWN", "IJJ", "IJS", "IUSV", "VOE", "IWS", "IWX", "MGV", "RPV", "VIOV", "SCHV", "SPYV", "ILCV", "IMCV", "ISCV", "PWV", "RFV", "RZV", "EFV", "VOOV", "VBR"],
     "Growth": ["DNL", "VUG", "IWF", "IVW", "SCHG", "SPYG", "IUSG", "IJK", "IJT", "IWO", "IWP", "IWY", "MDYG", "VBK", "VONG", "VOOG", "VOT", "ILCG", "IMCG", "ISCG", "RFG", "RPG", "RZG", "EFG"],
@@ -386,7 +386,6 @@ R_rolling_GR5 = R_oos[t_oos, ids_rolling_GR5]
 
 # RENDIMIENTOS DE LAS CARTERAS ROLLING EQUIPONDERADAS
 # PRODUCTO MATRICIAL (SUMATORIO): R_P = R_I @ W
-# DIMENSIONES: (T X 1) = (T X K) @ (K X 1)
 R_cartera_SR = pd.Series(R_rolling_SR @ w, index=T)
 R_cartera_SR_corr = pd.Series(R_rolling_SR_corr @ w, index=T)
 R_cartera_MSR = pd.Series(R_rolling_MSR @ w, index=T)
@@ -403,8 +402,7 @@ R_cartera_GR5 = pd.Series(R_rolling_GR5 @ w, index=T)
 # INVERSIÓN INICIAL DE 1€ 
 W0 = 1
 
-# RIQUEZA ACUMULADA DE LA CARTERA ROLLING (PRODUCTORIO): 
-# WT = W0 PROD(1 + RP,T) DESDE T=1 HASTA T
+# RIQUEZA ACUMULADA BRUTA DE LA CARTERA ROLLING
 wealth_rolling_SR = W0 * (1 + R_cartera_SR).cumprod()
 wealth_rolling_SR_corr = W0 * (1 + R_cartera_SR_corr).cumprod()
 wealth_rolling_MSR = W0 * (1 + R_cartera_MSR).cumprod()
@@ -418,70 +416,69 @@ wealth_rolling_Sortino = W0 * (1 + R_cartera_Sortino).cumprod()
 wealth_rolling_GR1 = W0 * (1 + R_cartera_GR1).cumprod()
 wealth_rolling_GR5 = W0 * (1 + R_cartera_GR5).cumprod()
 
-# B) CARTERA BUY & HOLD PURA
-# SOLO INVERTIMOS EN T = 0 Y NO INTERVENIMOS MÁS
-t0 = ranking_SR_oos.index[ranking_SR_oos.index < OOS_START_DATE][-1]
+# B) CARTERA REBALANCING B&H (EQUIPONDERADA CON REBALANCEO DIARIO)
 
-# K MEJORES ETFS EN T=0 (Y LOS CONGELAMOS): (1 X K)
-ids_buyhold_SR = ranking_SR_oos.loc[t0].values
-ids_buyhold_SR_corr = ranking_SR_corr_oos.loc[t0].values
-ids_buyhold_MSR = ranking_MSR_oos.loc[t0].values
-ids_buyhold_VaRR1 = ranking_VaRR1_oos.loc[t0].values
-ids_buyhold_VaRR5 = ranking_VaRR5_oos.loc[t0].values
-ids_buyhold_VaRR10 = ranking_VaRR10_oos.loc[t0].values
-ids_buyhold_Omega = ranking_Omega_oos.loc[t0].values
-ids_buyhold_UPR = ranking_UPR_oos.loc[t0].values
-ids_buyhold_Kappa3 = ranking_Kappa3_oos.loc[t0].values
-ids_buyhold_Sortino = ranking_Sortino_oos.loc[t0].values
-ids_buyhold_GR1 = ranking_GR1_oos.loc[t0].values
-ids_buyhold_GR5 = ranking_GR5_oos.loc[t0].values
+# 1. K MEJORES ETFS EN T=0
+ids_buyhold_SR_pos = ids_rolling_SR[0]
+ids_buyhold_SR_corr_pos = ids_rolling_SR_corr[0]
+ids_buyhold_MSR_pos = ids_rolling_MSR[0]
+ids_buyhold_VaRR1_pos = ids_rolling_VaRR1[0]
+ids_buyhold_VaRR5_pos = ids_rolling_VaRR5[0]
+ids_buyhold_VaRR10_pos = ids_rolling_VaRR10[0]
+ids_buyhold_Omega_pos = ids_rolling_Omega[0]
+ids_buyhold_UPR_pos = ids_rolling_UPR[0]
+ids_buyhold_Kappa3_pos = ids_rolling_Kappa3[0]
+ids_buyhold_Sortino_pos = ids_rolling_Sortino[0]
+ids_buyhold_GR1_pos = ids_rolling_GR1[0]
+ids_buyhold_GR5_pos = ids_rolling_GR5[0]
 
-# MATRIZ DE RENDIMIENTOS OOS DE LOS ETFS SELECCIONADOS POR LA B&H: (T X K)
-R_buyhold_SR = df_rendimientos.loc[T, ids_buyhold_SR]
-R_buyhold_SR_corr = df_rendimientos.loc[T, ids_buyhold_SR_corr]
-R_buyhold_MSR = df_rendimientos.loc[T, ids_buyhold_MSR]
-R_buyhold_VaRR1 = df_rendimientos.loc[T, ids_buyhold_VaRR1]
-R_buyhold_VaRR5 = df_rendimientos.loc[T, ids_buyhold_VaRR5]
-R_buyhold_VaRR10 = df_rendimientos.loc[T, ids_buyhold_VaRR10]
-R_buyhold_Omega = df_rendimientos.loc[T, ids_buyhold_Omega]
-R_buyhold_UPR = df_rendimientos.loc[T, ids_buyhold_UPR]
-R_buyhold_Kappa3 = df_rendimientos.loc[T, ids_buyhold_Kappa3]
-R_buyhold_Sortino = df_rendimientos.loc[T, ids_buyhold_Sortino]
-R_buyhold_GR1 = df_rendimientos.loc[T, ids_buyhold_GR1]
-R_buyhold_GR5 = df_rendimientos.loc[T, ids_buyhold_GR5]
+# 2. RENDIMIENTO DIARIO EQUIPONDERADO DE LA CARTERA FIJA (REBALANCEO FORZADO)
+R_port_reb_SR = pd.Series(R_oos[:, ids_buyhold_SR_pos] @ w, index=T)
+R_port_reb_SR_corr = pd.Series(R_oos[:, ids_buyhold_SR_corr_pos] @ w, index=T)
+R_port_reb_MSR = pd.Series(R_oos[:, ids_buyhold_MSR_pos] @ w, index=T)
+R_port_reb_VaRR1 = pd.Series(R_oos[:, ids_buyhold_VaRR1_pos] @ w, index=T)
+R_port_reb_VaRR5 = pd.Series(R_oos[:, ids_buyhold_VaRR5_pos] @ w, index=T)
+R_port_reb_VaRR10 = pd.Series(R_oos[:, ids_buyhold_VaRR10_pos] @ w, index=T)
+R_port_reb_Omega = pd.Series(R_oos[:, ids_buyhold_Omega_pos] @ w, index=T)
+R_port_reb_UPR = pd.Series(R_oos[:, ids_buyhold_UPR_pos] @ w, index=T)
+R_port_reb_Kappa3 = pd.Series(R_oos[:, ids_buyhold_Kappa3_pos] @ w, index=T)
+R_port_reb_Sortino = pd.Series(R_oos[:, ids_buyhold_Sortino_pos] @ w, index=T)
+R_port_reb_GR1 = pd.Series(R_oos[:, ids_buyhold_GR1_pos] @ w, index=T)
+R_port_reb_GR5 = pd.Series(R_oos[:, ids_buyhold_GR5_pos] @ w, index=T)
 
-# RIQUEZA ACUMULADA (T X K)
-etf_wealth_buyhold_SR = W0 * (1 + R_buyhold_SR).cumprod()
-etf_wealth_buyhold_SR_corr = W0 * (1 + R_buyhold_SR_corr).cumprod()
-etf_wealth_buyhold_MSR = W0 * (1 + R_buyhold_MSR).cumprod()
-etf_wealth_buyhold_VaRR1 = W0 * (1 + R_buyhold_VaRR1).cumprod()
-etf_wealth_buyhold_VaRR5 = W0 * (1 + R_buyhold_VaRR5).cumprod() 
-etf_wealth_buyhold_VaRR10 = W0 * (1 + R_buyhold_VaRR10).cumprod()
-etf_wealth_buyhold_Omega = W0 * (1 + R_buyhold_Omega).cumprod()
-etf_wealth_buyhold_UPR = W0 * (1 + R_buyhold_UPR).cumprod()
-etf_wealth_buyhold_Kappa3 = W0 * (1 + R_buyhold_Kappa3).cumprod()
-etf_wealth_buyhold_Sortino = W0 * (1 + R_buyhold_Sortino).cumprod()
-etf_wealth_buyhold_GR1 = W0 * (1 + R_buyhold_GR1).cumprod()
-etf_wealth_buyhold_GR5 = W0 * (1 + R_buyhold_GR5).cumprod()
+# 3. RIQUEZA ACUMULADA BRUTA DEL BENCHMARK REBALANCEADO
+wealth_buyhold_SR = W0 * (1 + R_port_reb_SR).cumprod()
+wealth_buyhold_SR_corr = W0 * (1 + R_port_reb_SR_corr).cumprod()
+wealth_buyhold_MSR = W0 * (1 + R_port_reb_MSR).cumprod()
+wealth_buyhold_VaRR1 = W0 * (1 + R_port_reb_VaRR1).cumprod()
+wealth_buyhold_VaRR5 = W0 * (1 + R_port_reb_VaRR5).cumprod()
+wealth_buyhold_VaRR10 = W0 * (1 + R_port_reb_VaRR10).cumprod()
+wealth_buyhold_Omega = W0 * (1 + R_port_reb_Omega).cumprod()
+wealth_buyhold_UPR = W0 * (1 + R_port_reb_UPR).cumprod()
+wealth_buyhold_Kappa3 = W0 * (1 + R_port_reb_Kappa3).cumprod()
+wealth_buyhold_Sortino = W0 * (1 + R_port_reb_Sortino).cumprod()
+wealth_buyhold_GR1 = W0 * (1 + R_port_reb_GR1).cumprod()
+wealth_buyhold_GR5 = W0 * (1 + R_port_reb_GR5).cumprod()
 
-# SUMA PONDERADA DE LA RIQUEZA PATRIMONIAL POR ETF
-# DIMENSIONES: (T X K) @ (K X 1) = (T X 1)
-wealth_buyhold_SR = pd.Series(etf_wealth_buyhold_SR.values @ w, index=T)
-wealth_buyhold_SR_corr = pd.Series(etf_wealth_buyhold_SR_corr.values @ w, index=T)
-wealth_buyhold_MSR = pd.Series(etf_wealth_buyhold_MSR.values @ w, index=T)
-wealth_buyhold_VaRR1 = pd.Series(etf_wealth_buyhold_VaRR1.values @ w, index=T)
-wealth_buyhold_VaRR5 = pd.Series(etf_wealth_buyhold_VaRR5.values @ w, index=T)
-wealth_buyhold_VaRR10 = pd.Series(etf_wealth_buyhold_VaRR10.values @ w, index=T)
-wealth_buyhold_Omega = pd.Series(etf_wealth_buyhold_Omega.values @ w, index=T)
-wealth_buyhold_UPR = pd.Series(etf_wealth_buyhold_UPR.values @ w, index=T)
-wealth_buyhold_Kappa3 = pd.Series(etf_wealth_buyhold_Kappa3.values @ w, index=T)
-wealth_buyhold_Sortino = pd.Series(etf_wealth_buyhold_Sortino.values @ w, index=T)
-wealth_buyhold_GR1 = pd.Series(etf_wealth_buyhold_GR1.values @ w, index=T)
-wealth_buyhold_GR5 = pd.Series(etf_wealth_buyhold_GR5.values @ w, index=T)
-
-# COSTES DE TRANSACCIÓN (DEMIGUEL 2009)
+# C) COSTES DE TRANSACCIÓN Y RIQUEZA NETA
 c = 0.0020
 
+# MATRICES CONSTANTES PARA EL BENCHMARK (T X K)
+ids_bh_matrix_SR = np.tile(ids_buyhold_SR_pos, (len(T), 1))
+ids_bh_matrix_SR_corr = np.tile(ids_buyhold_SR_corr_pos, (len(T), 1))
+ids_bh_matrix_MSR = np.tile(ids_buyhold_MSR_pos, (len(T), 1))
+ids_bh_matrix_VaRR1 = np.tile(ids_buyhold_VaRR1_pos, (len(T), 1))
+ids_bh_matrix_VaRR5 = np.tile(ids_buyhold_VaRR5_pos, (len(T), 1))
+ids_bh_matrix_VaRR10 = np.tile(ids_buyhold_VaRR10_pos, (len(T), 1))
+ids_bh_matrix_Omega = np.tile(ids_buyhold_Omega_pos, (len(T), 1))
+ids_bh_matrix_UPR = np.tile(ids_buyhold_UPR_pos, (len(T), 1))
+ids_bh_matrix_Kappa3 = np.tile(ids_buyhold_Kappa3_pos, (len(T), 1))
+ids_bh_matrix_Sortino = np.tile(ids_buyhold_Sortino_pos, (len(T), 1))
+ids_bh_matrix_GR1 = np.tile(ids_buyhold_GR1_pos, (len(T), 1))
+ids_bh_matrix_GR5 = np.tile(ids_buyhold_GR5_pos, (len(T), 1))
+
+
+# RIQUEZA NETA - ESTRATEGIA ROLLING (SUSTITUCIÓN + DERIVA)
 wealth_rolling_SR_netos = pd.Series(transaction_costs(R_oos, ids_rolling_SR, c=c), index=T)
 wealth_rolling_SR_corr_netos = pd.Series(transaction_costs(R_oos, ids_rolling_SR_corr, c=c), index=T)
 wealth_rolling_MSR_netos = pd.Series(transaction_costs(R_oos, ids_rolling_MSR, c=c), index=T)
@@ -495,69 +492,101 @@ wealth_rolling_Sortino_netos = pd.Series(transaction_costs(R_oos, ids_rolling_So
 wealth_rolling_GR1_netos = pd.Series(transaction_costs(R_oos, ids_rolling_GR1, c=c), index=T)
 wealth_rolling_GR5_netos = pd.Series(transaction_costs(R_oos, ids_rolling_GR5, c=c), index=T)
 
-# GRÁFICO COMPARATIVO: ROLLING SIN COSTES VS CON COSTES (BENCHMARK: BUY & HOLD)
-plot_cumulative_returns({
-    'SR': (wealth_rolling_SR, wealth_buyhold_SR, wealth_rolling_SR_netos, 'blue'),
-    'SR_corr': (wealth_rolling_SR_corr, wealth_buyhold_SR_corr, wealth_rolling_SR_corr_netos, 'purple'),
-    'MSR': (wealth_rolling_MSR, wealth_buyhold_MSR, wealth_rolling_MSR_netos, 'indigo'),
-    'VaRR1': (wealth_rolling_VaRR1, wealth_buyhold_VaRR1, wealth_rolling_VaRR1_netos, 'red'),
-    'VaRR5': (wealth_rolling_VaRR5, wealth_buyhold_VaRR5, wealth_rolling_VaRR5_netos, 'green'),
-    'VaRR10': (wealth_rolling_VaRR10, wealth_buyhold_VaRR10, wealth_rolling_VaRR10_netos, 'orange'),
-    'Omega': (wealth_rolling_Omega, wealth_buyhold_Omega, wealth_rolling_Omega_netos, 'blue'),
-    'UPR': (wealth_rolling_UPR, wealth_buyhold_UPR, wealth_rolling_UPR_netos, 'green'),
-    'Kappa3': (wealth_rolling_Kappa3, wealth_buyhold_Kappa3, wealth_rolling_Kappa3_netos, 'red'),
-    'Sortino': (wealth_rolling_Sortino, wealth_buyhold_Sortino, wealth_rolling_Sortino_netos, 'orange'),
-    'GR1': (wealth_rolling_GR1, wealth_buyhold_GR1, wealth_rolling_GR1_netos, 'brown'),
-    'GR5': (wealth_rolling_GR5, wealth_buyhold_GR5, wealth_rolling_GR5_netos, 'green'),
-})
+# RIQUEZA NETA - BENCHMARK ESTÁTICO (SÓLO DERIVA)
+wealth_buyhold_SR_netos = pd.Series(transaction_costs(R_oos, ids_bh_matrix_SR, c=c), index=T)
+wealth_buyhold_SR_corr_netos = pd.Series(transaction_costs(R_oos, ids_bh_matrix_SR_corr, c=c), index=T)
+wealth_buyhold_MSR_netos = pd.Series(transaction_costs(R_oos, ids_bh_matrix_MSR, c=c), index=T)
+wealth_buyhold_VaRR1_netos = pd.Series(transaction_costs(R_oos, ids_bh_matrix_VaRR1, c=c), index=T)
+wealth_buyhold_VaRR5_netos = pd.Series(transaction_costs(R_oos, ids_bh_matrix_VaRR5, c=c), index=T)
+wealth_buyhold_VaRR10_netos = pd.Series(transaction_costs(R_oos, ids_bh_matrix_VaRR10, c=c), index=T)
+wealth_buyhold_Omega_netos = pd.Series(transaction_costs(R_oos, ids_bh_matrix_Omega, c=c), index=T)
+wealth_buyhold_UPR_netos = pd.Series(transaction_costs(R_oos, ids_bh_matrix_UPR, c=c), index=T)
+wealth_buyhold_Kappa3_netos = pd.Series(transaction_costs(R_oos, ids_bh_matrix_Kappa3, c=c), index=T)
+wealth_buyhold_Sortino_netos = pd.Series(transaction_costs(R_oos, ids_bh_matrix_Sortino, c=c), index=T)
+wealth_buyhold_GR1_netos = pd.Series(transaction_costs(R_oos, ids_bh_matrix_GR1, c=c), index=T)
+wealth_buyhold_GR5_netos = pd.Series(transaction_costs(R_oos, ids_bh_matrix_GR5, c=c), index=T)
+
+# D) GRÁFICOS Y RESULTADOS
+
+diccionario_resultados = {
+    'SR':      (wealth_rolling_SR, wealth_rolling_SR_netos, wealth_buyhold_SR, wealth_buyhold_SR_netos, 'blue'),
+    'SR_corr': (wealth_rolling_SR_corr, wealth_rolling_SR_corr_netos, wealth_buyhold_SR_corr, wealth_buyhold_SR_corr_netos, 'purple'),
+    'MSR':     (wealth_rolling_MSR, wealth_rolling_MSR_netos, wealth_buyhold_MSR, wealth_buyhold_MSR_netos, 'indigo'),
+    'VaRR1':   (wealth_rolling_VaRR1, wealth_rolling_VaRR1_netos, wealth_buyhold_VaRR1, wealth_buyhold_VaRR1_netos, 'red'),
+    'VaRR5':   (wealth_rolling_VaRR5, wealth_rolling_VaRR5_netos, wealth_buyhold_VaRR5, wealth_buyhold_VaRR5_netos, 'green'),
+    'VaRR10':  (wealth_rolling_VaRR10, wealth_rolling_VaRR10_netos, wealth_buyhold_VaRR10, wealth_buyhold_VaRR10_netos, 'orange'),
+    'Omega':   (wealth_rolling_Omega, wealth_rolling_Omega_netos, wealth_buyhold_Omega, wealth_buyhold_Omega_netos, 'blue'),
+    'UPR':     (wealth_rolling_UPR, wealth_rolling_UPR_netos, wealth_buyhold_UPR, wealth_buyhold_UPR_netos, 'green'),
+    'Kappa3':  (wealth_rolling_Kappa3, wealth_rolling_Kappa3_netos, wealth_buyhold_Kappa3, wealth_buyhold_Kappa3_netos, 'red'),
+    'Sortino': (wealth_rolling_Sortino, wealth_rolling_Sortino_netos, wealth_buyhold_Sortino, wealth_buyhold_Sortino_netos, 'orange'),
+    'GR1':     (wealth_rolling_GR1, wealth_rolling_GR1_netos, wealth_buyhold_GR1, wealth_buyhold_GR1_netos, 'brown'),
+    'GR5':     (wealth_rolling_GR5, wealth_rolling_GR5_netos, wealth_buyhold_GR5, wealth_buyhold_GR5_netos, 'green')
+}
+
+plot_cumulative_returns(diccionario_resultados)
 
 # RESULTADOS DE LA RIQUEZA ACUMULADA
 print("\nResultados: Riqueza Acumulada")
 
-# BUY & HOLD
-print("\n   ► BUY & HOLD (sin costes):")
-print(f"      Sharpe Ratio : €{wealth_buyhold_SR.iloc[-1]:.4f}")
-print(f"      Sharpe Corr  : €{wealth_buyhold_SR_corr.iloc[-1]:.4f}")
-print(f"      MSR          : €{wealth_buyhold_MSR.iloc[-1]:.4f}")
-print(f"      VaRR1        : €{wealth_buyhold_VaRR1.iloc[-1]:.4f}")
-print(f"      VaRR5        : €{wealth_buyhold_VaRR5.iloc[-1]:.4f}")
-print(f"      VaRR10       : €{wealth_buyhold_VaRR10.iloc[-1]:.4f}")
-print(f"      Omega        : €{wealth_buyhold_Omega.iloc[-1]:.4f}")
-print(f"      UPR          : €{wealth_buyhold_UPR.iloc[-1]:.4f}")
-print(f"      Kappa3       : €{wealth_buyhold_Kappa3.iloc[-1]:.4f}")
-print(f"      Sortino      : €{wealth_buyhold_Sortino.iloc[-1]:.4f}")
-print(f"      GR1          : €{wealth_buyhold_GR1.iloc[-1]:.4f}")
-print(f"      GR5          : €{wealth_buyhold_GR5.iloc[-1]:.4f}")
+# BENCHMARK BRUTO
+print("\n   ► REBALANCED BUY & HOLD (sin costes):")
+print(f"     Sharpe Ratio : €{wealth_buyhold_SR.iloc[-1]:.4f}")
+print(f"     Sharpe Corr  : €{wealth_buyhold_SR_corr.iloc[-1]:.4f}")
+print(f"     MSR          : €{wealth_buyhold_MSR.iloc[-1]:.4f}")
+print(f"     VaRR1        : €{wealth_buyhold_VaRR1.iloc[-1]:.4f}")
+print(f"     VaRR5        : €{wealth_buyhold_VaRR5.iloc[-1]:.4f}")
+print(f"     VaRR10       : €{wealth_buyhold_VaRR10.iloc[-1]:.4f}")
+print(f"     Omega        : €{wealth_buyhold_Omega.iloc[-1]:.4f}")
+print(f"     UPR          : €{wealth_buyhold_UPR.iloc[-1]:.4f}")
+print(f"     Kappa3       : €{wealth_buyhold_Kappa3.iloc[-1]:.4f}")
+print(f"     Sortino      : €{wealth_buyhold_Sortino.iloc[-1]:.4f}")
+print(f"     GR1          : €{wealth_buyhold_GR1.iloc[-1]:.4f}")
+print(f"     GR5          : €{wealth_buyhold_GR5.iloc[-1]:.4f}")
 
-# ROLLING SIN COSTES
+# ROLLING BRUTO
 print("\n   ► ROLLING WINDOW (sin costes):")
-print(f"      Sharpe Ratio : €{wealth_rolling_SR.iloc[-1]:.4f}")
-print(f"      Sharpe Corr  : €{wealth_rolling_SR_corr.iloc[-1]:.4f}")
-print(f"      MSR          : €{wealth_rolling_MSR.iloc[-1]:.4f}")
-print(f"      VaRR1        : €{wealth_rolling_VaRR1.iloc[-1]:.4f}")
-print(f"      VaRR5        : €{wealth_rolling_VaRR5.iloc[-1]:.4f}")
-print(f"      VaRR10       : €{wealth_rolling_VaRR10.iloc[-1]:.4f}")
-print(f"      Omega        : €{wealth_rolling_Omega.iloc[-1]:.4f}")
-print(f"      UPR          : €{wealth_rolling_UPR.iloc[-1]:.4f}")
-print(f"      Kappa3       : €{wealth_rolling_Kappa3.iloc[-1]:.4f}")
-print(f"      Sortino      : €{wealth_rolling_Sortino.iloc[-1]:.4f}")
-print(f"      GR1          : €{wealth_rolling_GR1.iloc[-1]:.4f}")
-print(f"      GR5          : €{wealth_rolling_GR5.iloc[-1]:.4f}")
+print(f"     Sharpe Ratio : €{wealth_rolling_SR.iloc[-1]:.4f}")
+print(f"     Sharpe Corr  : €{wealth_rolling_SR_corr.iloc[-1]:.4f}")
+print(f"     MSR          : €{wealth_rolling_MSR.iloc[-1]:.4f}")
+print(f"     VaRR1        : €{wealth_rolling_VaRR1.iloc[-1]:.4f}")
+print(f"     VaRR5        : €{wealth_rolling_VaRR5.iloc[-1]:.4f}")
+print(f"     VaRR10       : €{wealth_rolling_VaRR10.iloc[-1]:.4f}")
+print(f"     Omega        : €{wealth_rolling_Omega.iloc[-1]:.4f}")
+print(f"     UPR          : €{wealth_rolling_UPR.iloc[-1]:.4f}")
+print(f"     Kappa3       : €{wealth_rolling_Kappa3.iloc[-1]:.4f}")
+print(f"     Sortino      : €{wealth_rolling_Sortino.iloc[-1]:.4f}")
+print(f"     GR1          : €{wealth_rolling_GR1.iloc[-1]:.4f}")
+print(f"     GR5          : €{wealth_rolling_GR5.iloc[-1]:.4f}")
 
-# ROLLING CON COSTES
+# BENCHMARK NETO
+print(f"\n   ► REBALANCED BUY & HOLD - con costes de transacción - ({c * 10000} bps):")
+print(f"     Sharpe Ratio : €{wealth_buyhold_SR_netos.iloc[-1]:.4f}")
+print(f"     Sharpe Corr  : €{wealth_buyhold_SR_corr_netos.iloc[-1]:.4f}")
+print(f"     MSR          : €{wealth_buyhold_MSR_netos.iloc[-1]:.4f}")
+print(f"     VaRR1        : €{wealth_buyhold_VaRR1_netos.iloc[-1]:.4f}")
+print(f"     VaRR5        : €{wealth_buyhold_VaRR5_netos.iloc[-1]:.4f}")
+print(f"     VaRR10       : €{wealth_buyhold_VaRR10_netos.iloc[-1]:.4f}")
+print(f"     Omega        : €{wealth_buyhold_Omega_netos.iloc[-1]:.4f}")
+print(f"     UPR          : €{wealth_buyhold_UPR_netos.iloc[-1]:.4f}")
+print(f"     Kappa3       : €{wealth_buyhold_Kappa3_netos.iloc[-1]:.4f}")
+print(f"     Sortino      : €{wealth_buyhold_Sortino_netos.iloc[-1]:.4f}")
+print(f"     GR1          : €{wealth_buyhold_GR1_netos.iloc[-1]:.4f}")
+print(f"     GR5          : €{wealth_buyhold_GR5_netos.iloc[-1]:.4f}")
+
+# ROLLING NETO
 print(f"\n   ► ROLLING WINDOW - con costes de transacción - ({c * 10000} bps):")
-print(f"      Sharpe Ratio : €{wealth_rolling_SR_netos.iloc[-1]:.4f}")
-print(f"      Sharpe Corr  : €{wealth_rolling_SR_corr_netos.iloc[-1]:.4f}")
-print(f"      MSR          : €{wealth_rolling_MSR_netos.iloc[-1]:.4f}")
-print(f"      VaRR1        : €{wealth_rolling_VaRR1_netos.iloc[-1]:.4f}")
-print(f"      VaRR5        : €{wealth_rolling_VaRR5_netos.iloc[-1]:.4f}")
-print(f"      VaRR10       : €{wealth_rolling_VaRR10_netos.iloc[-1]:.4f}")
-print(f"      Omega        : €{wealth_rolling_Omega_netos.iloc[-1]:.4f}")
-print(f"      UPR          : €{wealth_rolling_UPR_netos.iloc[-1]:.4f}")
-print(f"      Kappa3       : €{wealth_rolling_Kappa3_netos.iloc[-1]:.4f}")
-print(f"      Sortino      : €{wealth_rolling_Sortino_netos.iloc[-1]:.4f}")
-print(f"      GR1          : €{wealth_rolling_GR1_netos.iloc[-1]:.4f}")
-print(f"      GR5          : €{wealth_rolling_GR5_netos.iloc[-1]:.4f}")
+print(f"     Sharpe Ratio : €{wealth_rolling_SR_netos.iloc[-1]:.4f}")
+print(f"     Sharpe Corr  : €{wealth_rolling_SR_corr_netos.iloc[-1]:.4f}")
+print(f"     MSR          : €{wealth_rolling_MSR_netos.iloc[-1]:.4f}")
+print(f"     VaRR1        : €{wealth_rolling_VaRR1_netos.iloc[-1]:.4f}")
+print(f"     VaRR5        : €{wealth_rolling_VaRR5_netos.iloc[-1]:.4f}")
+print(f"     VaRR10       : €{wealth_rolling_VaRR10_netos.iloc[-1]:.4f}")
+print(f"     Omega        : €{wealth_rolling_Omega_netos.iloc[-1]:.4f}")
+print(f"     UPR          : €{wealth_rolling_UPR_netos.iloc[-1]:.4f}")
+print(f"     Kappa3       : €{wealth_rolling_Kappa3_netos.iloc[-1]:.4f}")
+print(f"     Sortino      : €{wealth_rolling_Sortino_netos.iloc[-1]:.4f}")
+print(f"     GR1          : €{wealth_rolling_GR1_netos.iloc[-1]:.4f}")
+print(f"     GR5          : €{wealth_rolling_GR5_netos.iloc[-1]:.4f}")
 
 plt.show(block=True)
 
@@ -787,8 +816,6 @@ print(f"      3. {stats_GR5.iloc[2]['Ticker']:<10} ({stats_GR5.iloc[2]['Survival
 print(f"      4. {stats_GR5.iloc[3]['Ticker']:<10} ({stats_GR5.iloc[3]['Survival_Rate']:.2%})")
 print(f"      5. {stats_GR5.iloc[4]['Ticker']:<10} ({stats_GR5.iloc[4]['Survival_Rate']:.2%})")
 
-print("\nTop 5 ETFs con mejor posición media en el ranking:")
-
 print("\nTop 5 ETFs con mejor posición mediana en el ranking:")
 
 # 1. SHARPE RATIO
@@ -886,6 +913,104 @@ print(f"      2. {stats_GR5.iloc[1]['Ticker']:<10} (Posición mediana: {stats_GR
 print(f"      3. {stats_GR5.iloc[2]['Ticker']:<10} (Posición mediana: {stats_GR5.iloc[2]['Median_Position']:.2f}º)")
 print(f"      4. {stats_GR5.iloc[3]['Ticker']:<10} (Posición mediana: {stats_GR5.iloc[3]['Median_Position']:.2f}º)")
 print(f"      5. {stats_GR5.iloc[4]['Ticker']:<10} (Posición mediana: {stats_GR5.iloc[4]['Median_Position']:.2f}º)")
+
+print("\nFamilias de los Top 5 ETFs que más tiempo han permanecido en cartera:")
+
+# 1. SHARPE RATIO
+print("\n   ► Sharpe Ratio:")
+print(f"      1. {stats_SR.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR.iloc[0]['Ticker'])})")
+print(f"      2. {stats_SR.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR.iloc[1]['Ticker'])})")
+print(f"      3. {stats_SR.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR.iloc[2]['Ticker'])})")
+print(f"      4. {stats_SR.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR.iloc[3]['Ticker'])})")
+print(f"      5. {stats_SR.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR.iloc[4]['Ticker'])})")
+
+# 2. SHARPE CORRELATION
+print("\n   ► Sharpe Correlation:")
+print(f"      1. {stats_SR_corr.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR_corr.iloc[0]['Ticker'])})")
+print(f"      2. {stats_SR_corr.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR_corr.iloc[1]['Ticker'])})")
+print(f"      3. {stats_SR_corr.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR_corr.iloc[2]['Ticker'])})")
+print(f"      4. {stats_SR_corr.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR_corr.iloc[3]['Ticker'])})")
+print(f"      5. {stats_SR_corr.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR_corr.iloc[4]['Ticker'])})")
+
+# 3. MARGINAL SHARPE RATIO
+print("\n   ► Marginal Sharpe Ratio (MSR):")
+print(f"      1. {stats_MSR.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_MSR.iloc[0]['Ticker'])})")
+print(f"      2. {stats_MSR.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_MSR.iloc[1]['Ticker'])})")
+print(f"      3. {stats_MSR.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_MSR.iloc[2]['Ticker'])})")
+print(f"      4. {stats_MSR.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_MSR.iloc[3]['Ticker'])})")
+print(f"      5. {stats_MSR.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_MSR.iloc[4]['Ticker'])})")
+
+# 4. VAR RATIO 1%
+print("\n   ► VaR Ratio 1%:")
+print(f"      1. {stats_VaRR1.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR1.iloc[0]['Ticker'])})")
+print(f"      2. {stats_VaRR1.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR1.iloc[1]['Ticker'])})")
+print(f"      3. {stats_VaRR1.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR1.iloc[2]['Ticker'])})")
+print(f"      4. {stats_VaRR1.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR1.iloc[3]['Ticker'])})")
+print(f"      5. {stats_VaRR1.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR1.iloc[4]['Ticker'])})")
+
+# 5. VAR RATIO 5%
+print("\n   ► VaR Ratio 5%:")
+print(f"      1. {stats_VaRR5.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR5.iloc[0]['Ticker'])})")
+print(f"      2. {stats_VaRR5.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR5.iloc[1]['Ticker'])})")
+print(f"      3. {stats_VaRR5.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR5.iloc[2]['Ticker'])})")
+print(f"      4. {stats_VaRR5.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR5.iloc[3]['Ticker'])})")
+print(f"      5. {stats_VaRR5.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR5.iloc[4]['Ticker'])})")
+
+# 6. VAR RATIO 10%
+print("\n   ► VaR Ratio 10%:")
+print(f"      1. {stats_VaRR10.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR10.iloc[0]['Ticker'])})")
+print(f"      2. {stats_VaRR10.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR10.iloc[1]['Ticker'])})")
+print(f"      3. {stats_VaRR10.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR10.iloc[2]['Ticker'])})")
+print(f"      4. {stats_VaRR10.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR10.iloc[3]['Ticker'])})")
+print(f"      5. {stats_VaRR10.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR10.iloc[4]['Ticker'])})")
+
+# 7. OMEGA
+print("\n   ► Omega:")
+print(f"      1. {stats_Omega.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Omega.iloc[0]['Ticker'])})")
+print(f"      2. {stats_Omega.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Omega.iloc[1]['Ticker'])})")
+print(f"      3. {stats_Omega.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Omega.iloc[2]['Ticker'])})")
+print(f"      4. {stats_Omega.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Omega.iloc[3]['Ticker'])})")
+print(f"      5. {stats_Omega.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Omega.iloc[4]['Ticker'])})")
+
+# 8. UPR
+print("\n   ► UPR:")
+print(f"      1. {stats_UPR.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_UPR.iloc[0]['Ticker'])})")
+print(f"      2. {stats_UPR.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_UPR.iloc[1]['Ticker'])})")
+print(f"      3. {stats_UPR.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_UPR.iloc[2]['Ticker'])})")
+print(f"      4. {stats_UPR.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_UPR.iloc[3]['Ticker'])})")
+print(f"      5. {stats_UPR.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_UPR.iloc[4]['Ticker'])})")
+
+# 9. KAPPA3
+print("\n   ► Kappa3:")
+print(f"      1. {stats_Kappa3.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Kappa3.iloc[0]['Ticker'])})")
+print(f"      2. {stats_Kappa3.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Kappa3.iloc[1]['Ticker'])})")
+print(f"      3. {stats_Kappa3.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Kappa3.iloc[2]['Ticker'])})")
+print(f"      4. {stats_Kappa3.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Kappa3.iloc[3]['Ticker'])})")
+print(f"      5. {stats_Kappa3.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Kappa3.iloc[4]['Ticker'])})")
+
+# 10. SORTINO
+print("\n   ► Sortino:")
+print(f"      1. {stats_Sortino.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Sortino.iloc[0]['Ticker'])})")
+print(f"      2. {stats_Sortino.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Sortino.iloc[1]['Ticker'])})")
+print(f"      3. {stats_Sortino.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Sortino.iloc[2]['Ticker'])})")
+print(f"      4. {stats_Sortino.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Sortino.iloc[3]['Ticker'])})")
+print(f"      5. {stats_Sortino.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Sortino.iloc[4]['Ticker'])})")
+
+# 11. GR1
+print("\n   ► GR1:")
+print(f"      1. {stats_GR1.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR1.iloc[0]['Ticker'])})")
+print(f"      2. {stats_GR1.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR1.iloc[1]['Ticker'])})")
+print(f"      3. {stats_GR1.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR1.iloc[2]['Ticker'])})")
+print(f"      4. {stats_GR1.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR1.iloc[3]['Ticker'])})")
+print(f"      5. {stats_GR1.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR1.iloc[4]['Ticker'])})")
+
+# 12. GR5
+print("\n   ► GR5:")
+print(f"      1. {stats_GR5.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR5.iloc[0]['Ticker'])})")
+print(f"      2. {stats_GR5.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR5.iloc[1]['Ticker'])})")
+print(f"      3. {stats_GR5.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR5.iloc[2]['Ticker'])})")
+print(f"      4. {stats_GR5.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR5.iloc[3]['Ticker'])})")
+print(f"      5. {stats_GR5.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR5.iloc[4]['Ticker'])})")
 
 all_stats_dict = {
     'SR': stats_SR,

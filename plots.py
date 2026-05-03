@@ -78,7 +78,6 @@ def plot_efficient_frontier(df_efficient_frontier, opt_sharpe, opt_vol, mean_ret
 
 def plot_cumulative_returns(diccionario_riqueza: dict):
     set_latex_style()
-    
     metrics_map = {
         'SR': 'SR', 'SR_corr': 'SR$_{\\rho}$', 'MSR': 'MSR', 'VaRR1': r'VaRR$_{1\%}$', 
         'VaRR5': r'VaRR$_{5\%}$', 'VaRR10': r'VaRR$_{10\%}$', 'Omega': 'Omega', 
@@ -94,26 +93,30 @@ def plot_cumulative_returns(diccionario_riqueza: dict):
 
     for idx, (raw_title, values) in enumerate(diccionario_riqueza.items()):
         ax = axes[idx]
-        spread_bruta = (values[0] - values[1])
-        spread_neta = (values[2] - values[1])
         
-        metric_color = color_dict.get(raw_title, 'blue')
+        rolling_bruto = values[0]
+        rolling_neto = values[1]
+        bh_bruto = values[2]
+        bh_neto = values[3]
+        metric_color = color_dict.get(raw_title, 'black')
 
-        ax.plot(spread_bruta, label='Exceso de Riqueza', color='black', linestyle='--', linewidth=1.2)
-        ax.plot(spread_neta, label='Exceso de Riqueza con costes', color=metric_color, linestyle='-', linewidth=1.8)
+        spread_bruta = rolling_bruto - bh_bruto
+        spread_neta = rolling_neto - bh_neto
+        
+        ax.plot(spread_bruta, label='Spread Bruto (Sin Costes)', color='black', linestyle='--', linewidth=1.2)
+        ax.plot(spread_neta, label='Spread Neto (Con Costes)', color=metric_color, linestyle='-', linewidth=1.8)
         
         ax.axhline(0, color='black', linewidth=0.8, alpha=0.8)
         
         ax.set_title(metrics_map.get(raw_title, raw_title), fontsize=13, fontweight='bold')
-        ax.xaxis.set_major_formatter(mdates.DateFormatter('%Y'))
+        
         ax.spines['top'].set_visible(False)
         ax.spines['right'].set_visible(False)
-        ax.legend(fontsize=9, loc='lower left', frameon=False)
+        ax.legend(fontsize=9, loc='best', frameon=False)
 
     plt.tight_layout(pad=4.0)
     plt.savefig("cumulative_spread_returns.pdf", format='pdf', bbox_inches='tight', transparent=True)
     plt.show()
-    return {}
 
 def plot_turnover_frequency(diccionario_frecuencia: dict, save_path: str = "turnover_frequency.pdf"):
     set_latex_style()
