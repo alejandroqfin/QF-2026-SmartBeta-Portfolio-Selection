@@ -31,8 +31,8 @@ perfiles = ['EW', 'VT', 'RRT', 'GMV', 'ERC', 'MVS', 'HRP', 'HERC']
 # RECUPERAMOS VARIABLES
 variables = joblib.load(VARIABLES_FILE)
 
+c = 0.0
 K = variables['K']
-c = variables['c']
 T = variables['T']
 M = variables['M']
 tickers = variables['tickers']
