@@ -290,28 +290,22 @@ def W_HERC(R_is: np.ndarray, K: int):
         2. Número de clústeres: Calculado orgánicamente mediante 'Two-Difference Gap Statistic'.
         3. Asignación Inter-clúster y Intra-clúster minimizando el Expected Shortfall (CVaR).
     """
-    # 1. Riskfolio requiere un DataFrame de pandas
-    df_returns = pd.DataFrame(R_is)
-
-    # 2. Inicializamos el objeto HCPortfolio de clustering
+    df_returns = pd.DataFrame(R_is
     port = rp.HCPortfolio(returns=df_returns)
 
-    # 3. Optimización
-    # Al no fijar el parámetro 'k', Riskfolio halla el número óptimo de clústeres 
-    # automáticamente usando el Two-Difference Gap Statistic.
+    # Optimización
     try:
         w_df = port.optimization(
             model='HERC',
             codependence='pearson', 
-            rm='CDaR',              # 1. Usamos CDaR: Más estable en ventanas móviles (Raffinot, 2018)
+            rm='CVaR',              
             rf=0.0,                 
             linkage='ward',         
-            opt_k_method='silhouette', # 2. Silhouette es estadísticamente menos errático que twodiff día a día
-            max_k=6,                # 3. K=20 en tu cartera. Permitir 10 clústeres crea micro-grupos inútiles. Lo limitamos a 6.
+            opt_k_method='silhouette', 
+            max_k=6,                
             leaf_order=True         
         )
         
-        # Extraemos los pesos como array de numpy
         w_herc = w_df['weights'].values
         w_herc = np.clip(w_herc, 0.0, 1.0)
         
