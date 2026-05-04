@@ -7,7 +7,7 @@ Autor: Alejandro Martínez
 import numpy as np
 from metrics import shrinkage
 from scipy.optimize import minimize
-from hrp import HRP, HERC
+from hrp import HRP
 
 def W_EW(K):
     """
@@ -274,40 +274,52 @@ def W_HRP(Sigma, K):
 
     return W_EW(K)
 
-def W_HERC(Sigma, K):
+import riskfolio as rp
+import numpy as np
+import pandas as pd
+
+def W_HERC(R_is: np.ndarray, K: int):
     """
     CARTERA HIERARCHICAL EQUAL RISK CONTRIBUTION (HERC).
 
-    Combina Machine Learning (clustering jerárquico con método de Ward) y Paridad 
-    de Riesgo para asignar el capital. (Raffinot, 2018).
+    Implementación profesional usando Riskfolio-Lib para evitar el colapso
+    computacional del Gap Statistic y resolver la minimización iterativa del CVaR.
 
     [Mecánica Algorítmica (Top-Down)]
-        1. Agrupación Compacta (Ward): Link mediante método de Ward.
-        2. Forzamos a N ≈ sqrt(K) clústeres para evitar el sobreajuste (overfitting).
-        3. Asignación Inter-clúster (ERC)
-        4. Asignación Intra-clúster (IVP)
-        
-    [Restricciones]
-        Σ w_k = 1      (Plena inversión)
-        0 <= w_k <= 1  (Long-only)
+        1. Agrupación Compacta: Link mediante método de Ward.
+        2. Número de clústeres: Calculado orgánicamente mediante 'Two-Difference Gap Statistic'.
+        3. Asignación Inter-clúster y Intra-clúster minimizando el Expected Shortfall (CVaR).
     """
+    # 1. Riskfolio requiere un DataFrame de pandas
+    df_returns = pd.DataFrame(R_is)
 
-    Sigma = np.asarray(Sigma, dtype=float)
-    Sigma = (Sigma + Sigma.T) / 2.0
-    diag = np.diag(Sigma)
-    floor = 1e-12
-    if np.any(diag <= floor):
-        Sigma = Sigma.copy()
-        np.fill_diagonal(Sigma, np.maximum(diag, floor))
+    # 2. Inicializamos el objeto HCPortfolio de clustering
+    port = rp.HCPortfolio(returns=df_returns)
 
-    # Extraemos los pesos HERC
-    w_herc, _, _ = HERC(Sigma)
-    
-    # Restricciones de no negatividad y normalización
-    w_herc = np.clip(np.asarray(w_herc).flatten(), 0.0, 1.0)
-    w_sum = w_herc.sum()
-
-    if w_sum > 0.0:
-        return w_herc / w_sum
+    # 3. Optimización
+    # Al no fijar el parámetro 'k', Riskfolio halla el número óptimo de clústeres 
+    # automáticamente usando el Two-Difference Gap Statistic.
+    try:
+        w_df = port.optimization(
+            model='HERC',
+            codependence='pearson', 
+            rm='CDaR',              # 1. Usamos CDaR: Más estable en ventanas móviles (Raffinot, 2018)
+            rf=0.0,                 
+            linkage='ward',         
+            opt_k_method='silhouette', # 2. Silhouette es estadísticamente menos errático que twodiff día a día
+            max_k=6,                # 3. K=20 en tu cartera. Permitir 10 clústeres crea micro-grupos inútiles. Lo limitamos a 6.
+            leaf_order=True         
+        )
+        
+        # Extraemos los pesos como array de numpy
+        w_herc = w_df['weights'].values
+        w_herc = np.clip(w_herc, 0.0, 1.0)
+        
+        w_sum = w_herc.sum()
+        if w_sum > 0.0:
+            return w_herc / w_sum
+            
+    except Exception as e:
+        pass
 
     return W_EW(K)
