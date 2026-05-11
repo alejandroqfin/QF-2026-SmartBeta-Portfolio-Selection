@@ -335,18 +335,14 @@ def allocation_model_with_costs(
         # FASE 2: CUANTO CAPITAL ASIGNAR A CADA ETF (K x 1)
         if perfil == 'EW':
             w_k = model(K)
-        elif perfil in ['VT', 'ERC', 'HRP']:
-            # Modelos que SÓLO necesitan la matriz de covarianzas
+        elif perfil == 'VT':
             w_k = model(Sigma, K)
         elif perfil == 'RRT':
-            # Modelo que necesita prima de riesgo y varianza
             w_k = model(mu, Sigma, K)
         elif perfil == 'MVS':
-            # Modelo que necesita todo (para la co-asimetría M3)
             w_k = model(rendimientos_is, mu, Sigma, K, **model_kwargs)
-        elif perfil in ['GMV', 'HERC']:
-            # Modelos que necesitan la matriz de rendimientos históricos (Shrinkage y CVaR)
-            w_k = model(rendimientos_is, K)
+        elif perfil in ['GMV', 'ERC', 'HRP', 'HERC']:
+            w_k = model(Sigma, K)
     
         # Proyectamos sobre N = 100 activos
         # Asignamos 0 a los no seleccionados

@@ -13,12 +13,7 @@ from screening import ROLLING_WINDOW_RANKINGS
 from metrics import risk_contribution, allocation_model_with_costs, MHI, maxDrawDown
 from plots import plot_allocation_spreads, plot_selection_spreads, plot_mhi, plot_robustness_analysis, plot_dendrogram, plot_matrix_heatmap, plot_dendrogram_heatmap, plot_single_allocation_spread, plot_single_selection_spread
 from portfolios import W_EW, W_VT, W_RRT, W_GMV, W_ERC, W_MVS, W_HRP, W_HERC
-from hrp import HRP
-
-
-import scipy.cluster.hierarchy as sch
-import scipy.spatial.distance as ssd
-from hrp import correlDist, getQuasiDiag
+from hrp import HRP, HERC
 
 OUTPUT_FILE = "100_ETFs_Allocation.xlsx"
 VARIABLES_FILE = "screening_artifacts.joblib"
@@ -31,7 +26,10 @@ perfiles = ['EW', 'VT', 'RRT', 'GMV', 'ERC', 'MVS', 'HRP', 'HERC']
 # RECUPERAMOS VARIABLES
 variables = joblib.load(VARIABLES_FILE)
 
-c = 0.0
+# COSTES DE TRANSACCIÓN
+c = variables['c']
+
+# VARIABLES
 K = variables['K']
 T = variables['T']
 M = variables['M']
@@ -55,9 +53,9 @@ pct_nulos = 100.0 * df_rendimientos.isna().sum().sum() / df_rendimientos.size
 print(" DATOS")
 
 print("\n Configuración de la Cartera ")
-print(f"  • Universo de ETFs (N):     {len(tickers)}")
-print(f"  • Objetivo en cartera (K):  {K}")
-print(f"  • Costes de transacc. (c):  {c}")
+print(f"  • Universo de ETFs (N):      {len(tickers)}")
+print(f"  • Objetivo en cartera (K):   {K}")
+print(f"  • Costes de transacción (c): {c}")
 
 print("\n Horizonte Temporal ")
 print(f"  • Fecha inicial global:     {df_rendimientos.index.min().date()}")
@@ -138,17 +136,12 @@ corr_matrix = pd.DataFrame(R_IS, columns=etfs_vertical).corr()
 # ALGORITMO HRP
 w_HRP, links_vertical_HRP, Sigma_quasidiag_HRP = HRP(Sigma, labels=etfs_vertical)
 
-# ALGORITMO HERC (Reconstrucción topológica para los gráficos estáticos)
-dist = correlDist(corr_matrix)
-links_vertical_HERC = sch.linkage(ssd.squareform(dist, checks=False), method='ward')
-
-# Obtenemos el orden cuasi-diagonal leyendo el linkage de Ward
-sort_ix_HERC = getQuasiDiag(links_vertical_HERC)
-etfs_ordenados_HERC = corr_matrix.columns[sort_ix_HERC].tolist()
+# ALGORITMO HERC
+w_HERC, links_vertical_HERC, Sigma_quasidiag_HERC = HERC(Sigma, labels=etfs_vertical)
 
 # CORRELACIONES CUASIDIAGONALIZADAS
 corr_quasidiag_HRP = corr_matrix.loc[Sigma_quasidiag_HRP.index, Sigma_quasidiag_HRP.columns]
-corr_quasidiag_HERC = corr_matrix.loc[etfs_ordenados_HERC, etfs_ordenados_HERC]
+corr_quasidiag_HERC = corr_matrix.loc[Sigma_quasidiag_HERC.index, Sigma_quasidiag_HERC.columns]
 
 # DENDROGRAMAS
 plot_dendrogram(
@@ -201,7 +194,7 @@ w_GMV = w_GMV = W_GMV(R_IS, K, print_delta=True)    # (K x 1)
 w_ERC = W_ERC(Sigma, K)                             # (K x 1)
 w_MVS = W_MVS(R_IS, mu, Sigma, K)                   # (K x 1)
 w_HRP = w_HRP                                       # (K x 1)
-w_HERC = W_HERC(R_IS, K)                            # (K x 1)
+w_HERC = w_HERC                                     # (K x 1)
 
 # MEDIAS (mu_p) IN SAMPLE
 mu_EW = float(w_EW @ mu)                    # (K x 1) @ (K x 1) -> escalar
