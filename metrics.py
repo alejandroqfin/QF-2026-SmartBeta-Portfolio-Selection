@@ -276,7 +276,7 @@ def allocation_model_with_costs(
     ids_matrix: np.ndarray,
     model: callable,
     perfil: str,
-    c: float = 0.0050,
+    c: float = 0.0020,
     save_mhi: callable = None,
     **model_kwargs
 ) -> tuple[np.ndarray, np.ndarray]:

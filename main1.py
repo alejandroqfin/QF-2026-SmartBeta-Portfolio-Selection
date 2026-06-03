@@ -126,21 +126,21 @@ T = df_rendimientos.index[df_rendimientos.index >= OOS_START_DATE]
 t = ranking_SR_oos.index.get_indexer(T)
 
 # LOS ACTIVOS SELECCIONADOS PARA GENERAR EL RENDIMIENTO DE HOY (t) SON LOS SELECCIONADOS AYER (t-1)
-t_anterior = np.maximum(0, t - 1)
+t_prev = np.maximum(0, t - 1)
 
 # MATRICES DE IDS SELECCIONADOS: (T X K)
-ids_rolling_SR = (ranking_SR_oos.iloc[t_anterior].values - 1).astype(int)
-ids_rolling_SR_corr = (ranking_SR_corr_oos.iloc[t_anterior].values - 1).astype(int)
-ids_rolling_MSR = (ranking_MSR_oos.iloc[t_anterior].values - 1).astype(int)
-ids_rolling_VaRR5 = (ranking_VaRR5_oos.iloc[t_anterior].values - 1).astype(int)
-ids_rolling_VaRR1 = (ranking_VaRR1_oos.iloc[t_anterior].values - 1).astype(int)
-ids_rolling_VaRR10 = (ranking_VaRR10_oos.iloc[t_anterior].values - 1).astype(int)
-ids_rolling_Omega = (ranking_Omega_oos.iloc[t_anterior].values - 1).astype(int)
-ids_rolling_UPR = (ranking_UPR_oos.iloc[t_anterior].values - 1).astype(int)
-ids_rolling_Kappa3 = (ranking_Kappa3_oos.iloc[t_anterior].values - 1).astype(int)
-ids_rolling_Sortino = (ranking_Sortino_oos.iloc[t_anterior].values - 1).astype(int)
-ids_rolling_GR1 = (ranking_GR1_oos.iloc[t_anterior].values - 1).astype(int)
-ids_rolling_GR5 = (ranking_GR5_oos.iloc[t_anterior].values - 1).astype(int)
+ids_rolling_SR = (ranking_SR_oos.iloc[t_prev].values - 1).astype(int)
+ids_rolling_SR_corr = (ranking_SR_corr_oos.iloc[t_prev].values - 1).astype(int)
+ids_rolling_MSR = (ranking_MSR_oos.iloc[t_prev].values - 1).astype(int)
+ids_rolling_VaRR5 = (ranking_VaRR5_oos.iloc[t_prev].values - 1).astype(int)
+ids_rolling_VaRR1 = (ranking_VaRR1_oos.iloc[t_prev].values - 1).astype(int)
+ids_rolling_VaRR10 = (ranking_VaRR10_oos.iloc[t_prev].values - 1).astype(int)
+ids_rolling_Omega = (ranking_Omega_oos.iloc[t_prev].values - 1).astype(int)
+ids_rolling_UPR = (ranking_UPR_oos.iloc[t_prev].values - 1).astype(int)
+ids_rolling_Kappa3 = (ranking_Kappa3_oos.iloc[t_prev].values - 1).astype(int)
+ids_rolling_Sortino = (ranking_Sortino_oos.iloc[t_prev].values - 1).astype(int)
+ids_rolling_GR1 = (ranking_GR1_oos.iloc[t_prev].values - 1).astype(int)
+ids_rolling_GR5 = (ranking_GR5_oos.iloc[t_prev].values - 1).astype(int)
 
 print("\n FASE 1: ANÁLISIS DE COINCIDENCIA DE ACTIVOS (MEDIANA HISTÓRICA %)")
 
@@ -1066,7 +1066,75 @@ ranking_Sortino = ranking_Sortino_oos.map(id_to_ticker.get)
 ranking_GR1 = ranking_GR1_oos.map(id_to_ticker.get)
 ranking_GR5 = ranking_GR5_oos.map(id_to_ticker.get)
 
-print(f"\n Análisis completado. Archivo guardado: {OUTPUT_FILE}")
+# ANEXO D: ANÁLISIS DE ROBUSTEZ TAMAÑO DE LAS CARTERAS (K=10 vs K=20)
+print("\n ANEXO D: ANÁLISIS DE SENSIBILIDAD (K=10 vs K=20)")
+
+# 1. PARÁMETROS Y RANKINGS EXCLUSIVOS PARA TOP 10
+K_rob = 10
+w_rob = W_EW(K_rob)
+
+rankings_oos_K10, _ = ROLLING_WINDOW_RANKINGS(df_rendimientos, OOS_START_DATE, K_rob, ratios, M=M)
+
+# 2. MATRICES DE IDs SELECCIONADOS (K=10)
+ids_rolling_SR_K10      = (rankings_oos_K10['SR'].iloc[t_prev].values - 1).astype(int)
+ids_rolling_SR_corr_K10 = (rankings_oos_K10['SR_corr'].iloc[t_prev].values - 1).astype(int)
+ids_rolling_MSR_K10     = (rankings_oos_K10['MSR'].iloc[t_prev].values - 1).astype(int)
+ids_rolling_VaRR1_K10   = (rankings_oos_K10['VaRR1'].iloc[t_prev].values - 1).astype(int)
+ids_rolling_VaRR5_K10   = (rankings_oos_K10['VaRR5'].iloc[t_prev].values - 1).astype(int)
+ids_rolling_VaRR10_K10  = (rankings_oos_K10['VaRR10'].iloc[t_prev].values - 1).astype(int)
+ids_rolling_Omega_K10   = (rankings_oos_K10['Omega'].iloc[t_prev].values - 1).astype(int)
+ids_rolling_UPR_K10     = (rankings_oos_K10['UPR'].iloc[t_prev].values - 1).astype(int)
+ids_rolling_Kappa3_K10  = (rankings_oos_K10['Kappa3'].iloc[t_prev].values - 1).astype(int)
+ids_rolling_Sortino_K10 = (rankings_oos_K10['Sortino'].iloc[t_prev].values - 1).astype(int)
+ids_rolling_GR1_K10     = (rankings_oos_K10['GR1'].iloc[t_prev].values - 1).astype(int)
+ids_rolling_GR5_K10     = (rankings_oos_K10['GR5'].iloc[t_prev].values - 1).astype(int)
+
+# 3. RENDIMIENTOS Y RIQUEZA BRUTA (K=10)
+wealth_rolling_SR_K10      = W0 * (1 + pd.Series(R_oos[t_oos, ids_rolling_SR_K10] @ w_rob, index=T)).cumprod()
+wealth_rolling_SR_corr_K10 = W0 * (1 + pd.Series(R_oos[t_oos, ids_rolling_SR_corr_K10] @ w_rob, index=T)).cumprod()
+wealth_rolling_MSR_K10     = W0 * (1 + pd.Series(R_oos[t_oos, ids_rolling_MSR_K10] @ w_rob, index=T)).cumprod()
+wealth_rolling_VaRR1_K10   = W0 * (1 + pd.Series(R_oos[t_oos, ids_rolling_VaRR1_K10] @ w_rob, index=T)).cumprod()
+wealth_rolling_VaRR5_K10   = W0 * (1 + pd.Series(R_oos[t_oos, ids_rolling_VaRR5_K10] @ w_rob, index=T)).cumprod()
+wealth_rolling_VaRR10_K10  = W0 * (1 + pd.Series(R_oos[t_oos, ids_rolling_VaRR10_K10] @ w_rob, index=T)).cumprod()
+wealth_rolling_Omega_K10   = W0 * (1 + pd.Series(R_oos[t_oos, ids_rolling_Omega_K10] @ w_rob, index=T)).cumprod()
+wealth_rolling_UPR_K10     = W0 * (1 + pd.Series(R_oos[t_oos, ids_rolling_UPR_K10] @ w_rob, index=T)).cumprod()
+wealth_rolling_Kappa3_K10  = W0 * (1 + pd.Series(R_oos[t_oos, ids_rolling_Kappa3_K10] @ w_rob, index=T)).cumprod()
+wealth_rolling_Sortino_K10 = W0 * (1 + pd.Series(R_oos[t_oos, ids_rolling_Sortino_K10] @ w_rob, index=T)).cumprod()
+wealth_rolling_GR1_K10     = W0 * (1 + pd.Series(R_oos[t_oos, ids_rolling_GR1_K10] @ w_rob, index=T)).cumprod()
+wealth_rolling_GR5_K10     = W0 * (1 + pd.Series(R_oos[t_oos, ids_rolling_GR5_K10] @ w_rob, index=T)).cumprod()
+
+# 4. RIQUEZA NETA (K=10) CON COSTES DE TRANSACCIÓN
+wealth_rolling_SR_netos_K10      = pd.Series(transaction_costs(R_oos, ids_rolling_SR_K10, c=c), index=T)
+wealth_rolling_SR_corr_netos_K10 = pd.Series(transaction_costs(R_oos, ids_rolling_SR_corr_K10, c=c), index=T)
+wealth_rolling_MSR_netos_K10     = pd.Series(transaction_costs(R_oos, ids_rolling_MSR_K10, c=c), index=T)
+wealth_rolling_VaRR1_netos_K10   = pd.Series(transaction_costs(R_oos, ids_rolling_VaRR1_K10, c=c), index=T)
+wealth_rolling_VaRR5_netos_K10   = pd.Series(transaction_costs(R_oos, ids_rolling_VaRR5_K10, c=c), index=T)
+wealth_rolling_VaRR10_netos_K10  = pd.Series(transaction_costs(R_oos, ids_rolling_VaRR10_K10, c=c), index=T)
+wealth_rolling_Omega_netos_K10   = pd.Series(transaction_costs(R_oos, ids_rolling_Omega_K10, c=c), index=T)
+wealth_rolling_UPR_netos_K10     = pd.Series(transaction_costs(R_oos, ids_rolling_UPR_K10, c=c), index=T)
+wealth_rolling_Kappa3_netos_K10  = pd.Series(transaction_costs(R_oos, ids_rolling_Kappa3_K10, c=c), index=T)
+wealth_rolling_Sortino_netos_K10 = pd.Series(transaction_costs(R_oos, ids_rolling_Sortino_K10, c=c), index=T)
+wealth_rolling_GR1_netos_K10     = pd.Series(transaction_costs(R_oos, ids_rolling_GR1_K10, c=c), index=T)
+wealth_rolling_GR5_netos_K10     = pd.Series(transaction_costs(R_oos, ids_rolling_GR5_K10, c=c), index=T)
+
+# 5. DICCIONARIO CARTERAS ROLLING (K=10 VS K=20)
+diccionario_K10_vs_K20 = {
+    'SR':      (wealth_rolling_SR_K10,      wealth_rolling_SR_netos_K10,      wealth_rolling_SR,      wealth_rolling_SR_netos,      'blue'),
+    'SR_corr': (wealth_rolling_SR_corr_K10, wealth_rolling_SR_corr_netos_K10, wealth_rolling_SR_corr, wealth_rolling_SR_corr_netos,       'purple'),
+    'MSR':     (wealth_rolling_MSR_K10,     wealth_rolling_MSR_netos_K10,     wealth_rolling_MSR,     wealth_rolling_MSR_netos,     'indigo'),
+    'VaRR1':   (wealth_rolling_VaRR1_K10,   wealth_rolling_VaRR1_netos_K10,   wealth_rolling_VaRR1,   wealth_rolling_VaRR1_netos,   'red'),
+    'VaRR5':   (wealth_rolling_VaRR5_K10,   wealth_rolling_VaRR5_netos_K10,   wealth_rolling_VaRR5,   wealth_rolling_VaRR5_netos,   'green'),
+    'VaRR10':  (wealth_rolling_VaRR10_K10,  wealth_rolling_VaRR10_netos_K10,  wealth_rolling_VaRR10,  wealth_rolling_VaRR10_netos,  'orange'),
+    'Omega':   (wealth_rolling_Omega_K10,   wealth_rolling_Omega_netos_K10,   wealth_rolling_Omega,   wealth_rolling_Omega_netos,   'blue'),
+    'UPR':     (wealth_rolling_UPR_K10,     wealth_rolling_UPR_netos_K10,     wealth_rolling_UPR,     wealth_rolling_UPR_netos,     'green'),
+    'Kappa3':  (wealth_rolling_Kappa3_K10,  wealth_rolling_Kappa3_netos_K10,  wealth_rolling_Kappa3,  wealth_rolling_Kappa3_netos,  'red'),
+    'Sortino': (wealth_rolling_Sortino_K10, wealth_rolling_Sortino_netos_K10, wealth_rolling_Sortino, wealth_rolling_Sortino_netos, 'orange'),
+    'GR1':     (wealth_rolling_GR1_K10,     wealth_rolling_GR1_netos_K10,     wealth_rolling_GR1,     wealth_rolling_GR1_netos,     'brown'),
+    'GR5':     (wealth_rolling_GR5_K10,     wealth_rolling_GR5_netos_K10,     wealth_rolling_GR5,     wealth_rolling_GR5_netos,     'green')
+}
+
+# 6. GRÁFICO DE SPREADS
+plot_cumulative_returns(diccionario_K10_vs_K20)
 
 # VARIABLES GUARADAS PARA EL PROXIMO CÓDIGO
 variables = {

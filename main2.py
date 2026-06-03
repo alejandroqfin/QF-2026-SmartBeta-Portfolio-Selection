@@ -7,11 +7,9 @@ Autor: Alejandro Martínez
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import joblib
-from screening import ROLLING_WINDOW_RANKINGS
 from metrics import risk_contribution, allocation_model_with_costs, MHI, maxDrawDown
-from plots import plot_allocation_spreads, plot_selection_spreads, plot_mhi, plot_robustness_analysis, plot_dendrogram, plot_matrix_heatmap, plot_dendrogram_heatmap, plot_single_allocation_spread, plot_single_selection_spread
+from plots import plot_allocation_spreads, plot_selection_spreads, plot_mhi, plot_dendrogram, plot_matrix_heatmap, plot_dendrogram_heatmap, plot_single_allocation_spread, plot_single_selection_spread
 from portfolios import W_EW, W_VT, W_RRT, W_GMV, W_ERC, W_MVS, W_HRP, W_HERC
 from hrp import HRP, HERC
 
@@ -54,7 +52,7 @@ print(" DATOS")
 
 print("\n Configuración de la Cartera ")
 print(f"  • Universo de ETFs (N):      {len(tickers)}")
-print(f"  • Objetivo en cartera (K):   {K}")
+print(f"  • Activos en cartera (K):   {K}")
 print(f"  • Costes de transacción (c): {c}")
 
 print("\n Horizonte Temporal ")
@@ -350,7 +348,7 @@ plot_single_allocation_spread(diccionario_riqueza=riqueza_oos_por_ratio, perfile
 # III) EVOLUCIÓN DEL ÍNDICE DE HERFINDAHL (MHI)
 mhi_spreads_by_ratio = plot_mhi(mhi_history=mhi_history, fechas_oos=T, ratios=ratios, perfiles=perfiles)
 
-# RESUMEN FINAL: PERFORMANCE DE TODAS LAS ESTRATEGIAS
+# IV) RESUMEN FINAL: PERFORMANCE DE TODAS LAS ESTRATEGIAS
 resumen = []
 for ratio, wealth_df in riqueza_oos_por_ratio.items():
     final_row = wealth_df.iloc[-1]
@@ -373,137 +371,199 @@ for ratio, wealth_df in riqueza_oos_por_ratio.items():
         
 summary_df = pd.DataFrame(resumen)
 
+# REBALANCEO MEDIO DIARIO
 print("\nRebalanceo medio diario (Costes de transacción):")
 print()
 for ratio in ratios:
     print(f"   • {ratio:<10}: {rotation_mean[ratio]:.4f} ETFs/día")
 
-print("\n [ 1. RENTABILIDAD ABSOLUTA (RIQUEZA ACUMULADA) ]")
+# PANEL A: RIQUEZA ACUMULADA
+print("\n [ PANEL A: RIQUEZA ACUMULADA (RIQUEZA ACUMULADA) ]")
 
-# ORDENAMOS POR RIQUEZA ACUMULADA
+# ORDENAMOS DE MAYOR A MENOR
 summary_ranked_ret = summary_df.sort_values(by='Riqueza_Final', ascending=False).reset_index(drop=True)
 top5_ret = summary_ranked_ret.head(5)
 bottom5_ret = summary_ranked_ret.tail(5).sort_values(by='Riqueza_Final', ascending=True).reset_index(drop=True)
 
-best_ret = top5_ret.iloc[0]
-worst_ret = bottom5_ret.iloc[0]
+print("\n    • Top 5 estrategias (Mayor Rendimiento):")
+for idx in range(5):
+    row = top5_ret.iloc[idx]
+    print(f"      {idx+1}. {row['Ratio_Seleccion']:<12} + {row['Perfil_Pesos']:<5} | Rendimiento: {row['Retorno_Acumulado_%']:>6.2f}% (DD: -{row['MaxDrawDown_%']:.2f}%) [Sharpe: {row['Sharpe_Ratio']:.4f}]")
 
-print("\n   • Top 5 estrategias (Mayor Rendimiento):")
-for i in range(5):
-    print(f"     {i+1}. {top5_ret.iloc[i]['Ratio_Seleccion']:<12} + {top5_ret.iloc[i]['Perfil_Pesos']:<5} | Rendimiento: {top5_ret.iloc[i]['Retorno_Acumulado_%']:>6.2f}% (DD: {top5_ret.iloc[i]['MaxDrawDown_%']:.2f}%)")
+print("\n    • Bottom 5 estrategias (Peor Rendimiento):")
+for idx in range(5):
+    row = bottom5_ret.iloc[idx]
+    print(f"      {idx+1}. {row['Ratio_Seleccion']:<12} + {row['Perfil_Pesos']:<5} | Rendimiento: {row['Retorno_Acumulado_%']:>6.2f}% (DD: -{row['MaxDrawDown_%']:.2f}%) [Sharpe: {row['Sharpe_Ratio']:.4f}]")
 
-print("\n   • Bottom 5 estrategias (Peor Rendimiento):")
-for i in range(5):
-    print(f"     {i+1}. {bottom5_ret.iloc[i]['Ratio_Seleccion']:<12} + {bottom5_ret.iloc[i]['Perfil_Pesos']:<5} | Rendimiento: {bottom5_ret.iloc[i]['Retorno_Acumulado_%']:>6.2f}% (DD: {bottom5_ret.iloc[i]['MaxDrawDown_%']:.2f}%)")
+# PANEL B: MAXIMO DRAWDOWN (MÁXIMA PÉRDIDA)
+print("\n [ PANEL B: PROTECCIÓN DE CAPITAL (MAXIMUM DRAWDOWN) ]")
 
+summary_ranked_dd_best = summary_df.sort_values(by='MaxDrawDown_%', ascending=False).reset_index(drop=True)
+top5_dd = summary_ranked_dd_best.head(5)
+summary_ranked_dd_worst = summary_df.sort_values(by='MaxDrawDown_%', ascending=True).reset_index(drop=True)
+bottom5_dd = summary_ranked_dd_worst.head(5)
 
-print(f"   ► Diferencia de capital (Mejor - Peor): {(best_ret['Riqueza_Final'] / worst_ret['Riqueza_Final'] - 1.0) * 100:.2f}%\n")
+print("\n    • Top 5 estrategias (Menor Caída Máxima - DE MEJOR A PEOR):")
+for idx in range(5):
+    row = top5_dd.iloc[idx]
+    print(f"      {idx+1}. {row['Ratio_Seleccion']:<12} + {row['Perfil_Pesos']:<5} | DD: {row['MaxDrawDown_%']:>6.2f}% (Rendimiento: {row['Retorno_Acumulado_%']:.2f}%) [Sharpe: {row['Sharpe_Ratio']:.4f}]")
 
-print("\n [ 2. PROTECCIÓN DE CAPITAL (MAXIMUM DRAWDOWN) ]")
+print("\n    • Bottom 5 estrategias (Mayor Destrucción de Capital - DE PEOR A MEJOR):")
+for idx in range(5):
+    row = bottom5_dd.iloc[idx]
+    print(f"      {idx+1}. {row['Ratio_Seleccion']:<12} + {row['Perfil_Pesos']:<5} | DD: {row['MaxDrawDown_%']:>6.2f}% (Rendimiento: {row['Retorno_Acumulado_%']:.2f}%) [Sharpe: {row['Sharpe_Ratio']:.4f}]")
 
-# ORDENAMOS POR MAXIMO DRAWDOWN (MÁXIMA PÉRDIDA, EL MÁS BAJO ARRIBA)
-summary_ranked_dd = summary_df.sort_values(by='MaxDrawDown_%', ascending=False).reset_index(drop=True)
-top5_dd = summary_ranked_dd.head(5)
-bottom5_dd = summary_ranked_dd.tail(5).sort_values(by='MaxDrawDown_%', ascending=True).reset_index(drop=True)
+# PANEL C: RENTABILIDAD AJUSTADA AL RIESGO (SHARPE RATIO)
+print("\n [ PANEL C: RENTABILIDAD AJUSTADA AL RIESGO (SHARPE RATIO) ]")
 
-best_dd = top5_dd.iloc[0]
-worst_dd = bottom5_dd.iloc[0]
-
-print("\n   • Top 5 estrategias (Menor Caída Máxima):")
-for i in range(5):
-    print(f"     {i+1}. {top5_dd.iloc[i]['Ratio_Seleccion']:<12} + {top5_dd.iloc[i]['Perfil_Pesos']:<5} | DD: {top5_dd.iloc[i]['MaxDrawDown_%']:>6.2f}% (Rendimiento: {top5_dd.iloc[i]['Retorno_Acumulado_%']:.2f}%)")
-
-print("\n   • Bottom 5 estrategias (Mayor Destrucción de Capital):")
-for i in range(5):
-    print(f"     {i+1}. {bottom5_dd.iloc[i]['Ratio_Seleccion']:<12} + {bottom5_dd.iloc[i]['Perfil_Pesos']:<5} | DD: {bottom5_dd.iloc[i]['MaxDrawDown_%']:>6.2f}% (Rendimiento: {bottom5_dd.iloc[i]['Retorno_Acumulado_%']:.2f}%)")
-
-print("\n [ 3. RENTABILIDAD AJUSTADA AL RIESGO (SHARPE RATIO) ]")
-
-# ORDENAMOS POR RATIO DE SHARPE
 summary_ranked_sr = summary_df.sort_values(by='Sharpe_Ratio', ascending=False).reset_index(drop=True)
 top5_sr = summary_ranked_sr.head(5)
 bottom5_sr = summary_ranked_sr.tail(5).sort_values(by='Sharpe_Ratio', ascending=True).reset_index(drop=True)
-
 best_sr = top5_sr.iloc[0]
 worst_sr = bottom5_sr.iloc[0]
 
-print("\n   • Top 5 estrategias (Mejor Equilibrio Rentabilidad/Riesgo):")
-for i in range(5):
-    print(f"     {i+1}. {top5_sr.iloc[i]['Ratio_Seleccion']:<12} + {top5_sr.iloc[i]['Perfil_Pesos']:<5} | Sharpe: {top5_sr.iloc[i]['Sharpe_Ratio']:>6.4f} (Rendimiento: {top5_sr.iloc[i]['Retorno_Acumulado_%']:>6.2f}%, DD: {top5_sr.iloc[i]['MaxDrawDown_%']:.2f}%)")
+print("\n    • Top 5 estrategias (Mejor Equilibrio Rentabilidad/Riesgo):")
+for idx in range(5):
+    row = top5_sr.iloc[idx]
+    print(f"      {idx+1}. {row['Ratio_Seleccion']:<12} + {row['Perfil_Pesos']:<5} | Sharpe: {row['Sharpe_Ratio']:>6.4f} (Rendimiento: {row['Retorno_Acumulado_%']:>6.2f}%, DD: -{row['MaxDrawDown_%']:.2f}%)")
 
-print("\n   • Bottom 5 estrategias (Peor Equilibrio Rentabilidad/Riesgo):")
-for i in range(5):
-    print(f"     {i+1}. {bottom5_sr.iloc[i]['Ratio_Seleccion']:<12} + {bottom5_sr.iloc[i]['Perfil_Pesos']:<5} | Sharpe: {bottom5_sr.iloc[i]['Sharpe_Ratio']:>6.4f} (Rendimiento: {bottom5_sr.iloc[i]['Retorno_Acumulado_%']:>6.2f}%, DD: {bottom5_sr.iloc[i]['MaxDrawDown_%']:.2f}%)")
+print("\n    • Bottom 5 estrategias (Peor Equilibrio Rentabilidad/Riesgo):")
+for idx in range(5):
+    row = bottom5_sr.iloc[idx]
+    print(f"      {idx+1}. {row['Ratio_Seleccion']:<12} + {row['Perfil_Pesos']:<5} | Sharpe: {row['Sharpe_Ratio']:>6.4f} (Rendimiento: {row['Retorno_Acumulado_%']:>6.2f}%, DD: -{row['MaxDrawDown_%']:.2f}%)")
 
-print(f"\n   ► Estrategia más Eficiente : {best_sr['Ratio_Seleccion']} + {best_sr['Perfil_Pesos']}")
-print(f"      ↳ Sharpe Ratio : {best_sr['Sharpe_Ratio']:.4f} | Riqueza Final: {best_sr['Riqueza_Final']:.4f} (DD: {best_sr['MaxDrawDown_%']:.2f}%)")
+print(f"\n    ► Estrategia más Eficiente : {best_sr['Ratio_Seleccion']} + {best_sr['Perfil_Pesos']}")
+print(f"       ↳ Sharpe Ratio : {best_sr['Sharpe_Ratio']:.4f} | Riqueza Final: {best_sr['Riqueza_Final']:.4f} (DD: -{best_sr['MaxDrawDown_%']:.2f}%)")
 
-print(f"   ► Estrategia menos Eficiente: {worst_sr['Ratio_Seleccion']} + {worst_sr['Perfil_Pesos']}")
-print(f"      ↳ Sharpe Ratio : {worst_sr['Sharpe_Ratio']:.4f} | Riqueza Final: {worst_sr['Riqueza_Final']:.4f} (DD: {worst_sr['MaxDrawDown_%']:.2f}%)")
+print(f"    ► Estrategia menos Eficiente: {worst_sr['Ratio_Seleccion']} + {worst_sr['Perfil_Pesos']}")
+print(f"       ↳ Sharpe Ratio : {worst_sr['Sharpe_Ratio']:.4f} | Riqueza Final: {worst_sr['Riqueza_Final']:.4f} (DD: -{worst_sr['MaxDrawDown_%']:.2f}%)")
 
-# ANÁLISIS DE ROBUSTEZ (ERROR DE ESTIMACIÓN)
-ratio_robustez = 'SR'
-cartera_robustez = 'GMV'
-modelo_robustez = W_GMV
-ids_matrix_robustez = rankings[ratio_robustez]
+# ANEXO C: ANÁLISIS DE ROBUSTEZ
 
-# ANÁLISIS DE ROBUSTEZ - TAMAÑO DE VENTANA (M vs M2)
-M2 = 2500
+# C.1. ANÁLISIS DE SENSIBILIDAD DEL COSTE DE TRANSACCIÓN (c = 0.0000)
 
-print(f"\nIniciando Análisis de Robustez (M={M} vs M={M2})...")
+print(" ANEXO C: ANÁLISIS DE SENSIBILIDAD (c = 0.0000)")
 
-# Definimos un nuevo horizonte (T_rob) que empiece estrictamente en el día M2 (2500)
-T_rob = df_rendimientos.index[df_rendimientos.index >= df_rendimientos.index[M2]]
-t_indices_rob = df_rendimientos.index.searchsorted(T_rob)
+rendimientos_oos_c0 = {}
+riqueza_oos_c0 = {}
+for ratio in ratios:
+    print(f"\n Ratio de Selección: {ratio}")
+    rendimientos_oos_c0[ratio] = {}
+    riqueza_oos_c0[ratio] = {}
+    ids_matrix = rankings[ratio]
+    
+    for perfil, model in perfiles_de_pesos:
+        print(f"  -> Optimizando pesos según: {perfil}")
+        r_neto, riq_neta = allocation_model_with_costs(
+            T, t_indices, M, K, rendimientos, ids_matrix, model, perfil, c=0.0, save_mhi=None)
+        rendimientos_oos_c0[ratio][perfil] = r_neto
+        riqueza_oos_c0[ratio][perfil] = riq_neta
 
-# Recalculamos los rankings EXCLUSIVAMENTE para la ventana de M2500 a partir de esa fecha
-rankings_M2500, _ = ROLLING_WINDOW_RANKINGS(df_rendimientos, T_rob[0], K, [ratio_robustez], M=M2)
-ranking_rob_df = rankings_M2500[ratio_robustez]
+rendimientos_oos_por_ratio_c0 = {}
+riqueza_oos_por_ratio_c0 = {}
 
-# Alineamos los IDs de M=2500 con las fechas T_rob
-t_rob_idx = ranking_rob_df.index.get_indexer(T_rob)
-t_anterior_rob = np.maximum(0, t_rob_idx - 1)
-ids_matrix_robustez_M2500 = (ranking_rob_df.iloc[t_anterior_rob].values - 1).astype(int)
+for ratio in ratios:
+    rendimientos_oos_por_ratio_c0[ratio] = pd.DataFrame(
+        {perfil: rendimientos_oos_c0[ratio][perfil] for perfil in perfiles}, index=T
+    )
+    riqueza_oos_por_ratio_c0[ratio] = pd.DataFrame(
+        {perfil: riqueza_oos_c0[ratio][perfil] for perfil in perfiles}, index=T
+    )
 
-# Alineamos los IDs que ya teníamos de M=1000 recortando los primeros días que sobran
-offset = len(T) - len(T_rob)
-ids_matrix_robustez_M1000 = ids_matrix_robustez[offset:]
+df_rendimientos_estrategias_c0 = pd.concat(rendimientos_oos_por_ratio_c0, axis=1)
+df_rendimientos_estrategias_c0.columns = [f"{ratio}_{perfil}" for ratio, perfil in df_rendimientos_estrategias_c0.columns]
 
-# Simulamos ambas carteras sobre el MISMO periodo de tiempo (T_rob)
-rendimientos_M1000, riqueza_M1000 = allocation_model_with_costs(
-    T_rob, t_indices_rob, M, K, rendimientos, ids_matrix_robustez_M1000, modelo_robustez, cartera_robustez, c=c)
+# CALCULO DE MÉTRICAS ANUALIZADAS SIN COSTES
+resultados_oos_c0 = pd.DataFrame({
+    'Rentabilidad Anualizada': df_rendimientos_estrategias_c0.mean() * annual_factor,
+    'Volatilidad Anualizada': df_rendimientos_estrategias_c0.std() * np.sqrt(annual_factor),
+    'Sharpe Ratio Anualizado': (df_rendimientos_estrategias_c0.mean() / df_rendimientos_estrategias_c0.std()) * np.sqrt(annual_factor),
+    'Asimetría (Skewness)': df_rendimientos_estrategias_c0.skew(),
+}).sort_values(by='Sharpe Ratio Anualizado', ascending=False)
 
-rendimientos_M2500, riqueza_M2500 = allocation_model_with_costs(
-    T_rob, t_indices_rob, M2, K, rendimientos, ids_matrix_robustez_M2500, modelo_robustez, cartera_robustez, c=c)
+# RESUMEN FINAL PARA LOS PANELES DE ROBUSTEZ
+resumen_c0 = []
+for ratio, wealth_df in riqueza_oos_por_ratio_c0.items():
+    final_row = wealth_df.iloc[-1]
+    for allocation_strategy in wealth_df.columns:
+        riqueza_serie = wealth_df[allocation_strategy]
+        maxDD = maxDrawDown(riqueza_serie)
+        
+        clave_resultados = f"{ratio}_{allocation_strategy}"
+        sharpe_val = resultados_oos_c0.loc[clave_resultados, 'Sharpe Ratio Anualizado']
+        
+        resumen_c0.append({
+            'Ratio_Seleccion': ratio,
+            'Perfil_Pesos': allocation_strategy,
+            'Riqueza_Final': final_row[allocation_strategy],
+            'Retorno_Acumulado_%': (final_row[allocation_strategy] - 1.0) * 100,
+            'MaxDrawDown_%': maxDD * 100,
+            'Sharpe_Ratio': sharpe_val
+        })
+        
+summary_df_c0 = pd.DataFrame(resumen_c0)
 
-# 4. Gráfico Comparativo
-plot_robustness_analysis(
-    f'Gráfico comparativo (M) para ({cartera_robustez} + {ratio_robustez})',
-    {
-        f'M = {M}': pd.Series(riqueza_M1000, index=T_rob),
-        f'M = {M2}': pd.Series(riqueza_M2500, index=T_rob) 
-    }
-)
+# TABLA DE RESULTADOS FINALES PARA c=0.0
+print(" [ ROBUSTEZ: PANEL A: RIQUEZA ACUMULADA (c = 0.0) ]")
 
-# ANÁLISIS DE ROBUSTEZ - GAMMA / AVERSIÓN AL RIESGO (CARTERA MVS)
-rendimientos_MVS_g1, riqueza_MVS_g1 = allocation_model_with_costs(
-    T, t_indices, M, K, rendimientos, ids_matrix_robustez, W_MVS, 'MVS', c=c, gamma=1.0)
+summary_ranked_ret_c0 = summary_df_c0.sort_values(by='Riqueza_Final', ascending=False).reset_index(drop=True)
+top5_ret_c0 = summary_ranked_ret_c0.head(5)
+bottom5_ret_c0 = summary_ranked_ret_c0.tail(5).sort_values(by='Riqueza_Final', ascending=True).reset_index(drop=True)
+best_ret_c0 = top5_ret_c0.iloc[0]
+worst_ret_c0 = bottom5_ret_c0.iloc[0]
 
-rendimientos_MVS_g5, riqueza_MVS_g5 = allocation_model_with_costs(
-    T, t_indices, M, K, rendimientos, ids_matrix_robustez, W_MVS, 'MVS', c=c, gamma=5.0)
+print("\n    • Top 5 estrategias (Mayor Rendimiento - Sin Costes):")
+for idx in range(5):
+    row = top5_ret_c0.iloc[idx]
+    print(f"      {idx+1}. {row['Ratio_Seleccion']:<12} + {row['Perfil_Pesos']:<5} | Rendimiento: {row['Retorno_Acumulado_%']:>6.2f}% (DD: -{row['MaxDrawDown_%']:.2f}%) [Sharpe: {row['Sharpe_Ratio']:.4f}]")
 
-rendimientos_MVS_g10, riqueza_MVS_g10 = allocation_model_with_costs(
-    T, t_indices, M, K, rendimientos, ids_matrix_robustez, W_MVS, 'MVS', c=c, gamma=10.0)
+print("\n    • Bottom 5 estrategias (Peor Rendimiento - Sin Costes):")
+for idx in range(5):
+    row = bottom5_ret_c0.iloc[idx]
+    print(f"      {idx+1}. {row['Ratio_Seleccion']:<12} + {row['Perfil_Pesos']:<5} | Rendimiento: {row['Retorno_Acumulado_%']:>6.2f}% (DD: -{row['MaxDrawDown_%']:.2f}%) [Sharpe: {row['Sharpe_Ratio']:.4f}]")
 
-# GRÁFICO COMPARACIÓN GAMMA EN LA MVS
-plot_robustness_analysis(
-    f'Impacto de la Aversión al Riesgo (Gamma) - (MVS + {ratio_robustez})',
-    {
-        'Gamma = 1': pd.Series(riqueza_MVS_g1, index=T),
-        'Gamma = 5': pd.Series(riqueza_MVS_g5, index=T),
-        'Gamma = 10': pd.Series(riqueza_MVS_g10, index=T)})
 
-plt.show()
+print(" [ ROBUSTEZ: PANEL B: PROTECCIÓN DE CAPITAL (MAXIMUM DRAWDOWN c = 0.0) ]")
+
+summary_ranked_dd_best_c0 = summary_df_c0.sort_values(by='MaxDrawDown_%', ascending=True).reset_index(drop=True)
+top5_dd_c0 = summary_ranked_dd_best_c0.head(5)
+summary_ranked_dd_worst_c0 = summary_df_c0.sort_values(by='MaxDrawDown_%', ascending=False).reset_index(drop=True)
+bottom5_dd_c0 = summary_ranked_dd_worst_c0.head(5)
+
+print("\n    • Top 5 estrategias (Menor Caída Máxima - Sin Costes):")
+for idx in range(5):
+    row = top5_dd_c0.iloc[idx]
+    print(f"      {idx+1}. {row['Ratio_Seleccion']:<12} + {row['Perfil_Pesos']:<5} | DD: -{row['MaxDrawDown_%']:>6.2f}% (Rendimiento: {row['Retorno_Acumulado_%']:.2f}%) [Sharpe: {row['Sharpe_Ratio']:.4f}]")
+
+print("\n    • Bottom 5 estrategias (Mayor Destrucción de Capital - Sin Costes):")
+for idx in range(5):
+    row = bottom5_dd_c0.iloc[idx]
+    print(f"      {idx+1}. {row['Ratio_Seleccion']:<12} + {row['Perfil_Pesos']:<5} | DD: -{row['MaxDrawDown_%']:>6.2f}% (Rendimiento: {row['Retorno_Acumulado_%']:.2f}%) [Sharpe: {row['Sharpe_Ratio']:.4f}]")
+
+
+print(" [ ROBUSTEZ: PANEL C: RENTABILIDAD AJUSTADA AL RIESGO (SHARPE RATIO c = 0.0) ]")
+
+summary_ranked_sr_c0 = summary_df_c0.sort_values(by='Sharpe_Ratio', ascending=False).reset_index(drop=True)
+top5_sr_c0 = summary_ranked_sr_c0.head(5)
+bottom5_sr_c0 = summary_ranked_sr_c0.tail(5).sort_values(by='Sharpe_Ratio', ascending=True).reset_index(drop=True)
+best_sr_c0 = top5_sr_c0.iloc[0]
+worst_sr_c0 = bottom5_sr_c0.iloc[0]
+
+print("\n    • Top 5 estrategias (Mejor Equilibrio Rentabilidad/Riesgo - Sin Costes):")
+for idx in range(5):
+    row = top5_sr_c0.iloc[idx]
+    print(f"      {idx+1}. {row['Ratio_Seleccion']:<12} + {row['Perfil_Pesos']:<5} | Sharpe: {row['Sharpe_Ratio']:>6.4f} (Rendimiento: {row['Retorno_Acumulado_%']:>6.2f}%, DD: -{row['MaxDrawDown_%']:.2f}%)")
+
+print("\n    • Bottom 5 estrategias (Peor Equilibrio Rentabilidad/Riesgo - Sin Costes):")
+for idx in range(5):
+    row = bottom5_sr_c0.iloc[idx]
+    print(f"      {idx+1}. {row['Ratio_Seleccion']:<12} + {row['Perfil_Pesos']:<5} | Sharpe: {row['Sharpe_Ratio']:>6.4f} (Rendimiento: {row['Retorno_Acumulado_%']:>6.2f}%, DD: -{row['MaxDrawDown_%']:.2f}%)")
+
+print(f"\n    ► [c=0] Estrategia más Eficiente : {best_sr_c0['Ratio_Seleccion']} + {best_sr_c0['Perfil_Pesos']}")
+print(f"        ↳ Sharpe Ratio : {best_sr_c0['Sharpe_Ratio']:.4f} | Riqueza Final: {best_sr_c0['Riqueza_Final']:.4f} (DD: -{best_sr_c0['MaxDrawDown_%']:.2f}%)")
+
+print(f"    ► [c=0] Estrategia menos Eficiente: {worst_sr_c0['Ratio_Seleccion']} + {worst_sr_c0['Perfil_Pesos']}")
+print(f"        ↳ Sharpe Ratio : {worst_sr_c0['Sharpe_Ratio']:.4f} | Riqueza Final: {worst_sr_c0['Riqueza_Final']:.4f} (DD: -{worst_sr_c0['MaxDrawDown_%']:.2f}%)")
 
 # EXPORTAMOS RESULTADOS A EXCEL
 with pd.ExcelWriter(OUTPUT_FILE, engine='openpyxl') as writer:

@@ -243,7 +243,7 @@ def W_HRP(Sigma, K):
     no supervisado. Evita la inversión de la matriz de covarianzas, erradicando la inestabilidad 
     numérica del modelo tradicional de Markowitz (López de Prado, 2016).
 
-    [Mecánica Algorítmica]
+    [Algoritmo]
         1. Agrupación Jerárquica: Mapea la distancia entre activos usando 'Single Linkage'.
         2. Cuasi-Diagonalización: Reordena Σ agrupando activos correlacionados en la diagonal.
         3. Bisección Recursiva: Corta la lista a ciegas por la mitad y aplica Paridad de 
