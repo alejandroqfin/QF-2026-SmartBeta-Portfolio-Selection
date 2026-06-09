@@ -4,7 +4,7 @@
 
 ---
 
-## 🏛️ Arquitectura del Repositorio
+## Estructura del Repositorio
 
 El código está estructurado de forma que se pueda garantizar la replicabilidad total del Trabajo de Fin de Máster (TFM). 
 
@@ -27,5 +27,5 @@ Librerías internas con la matemática vectorizada del modelo:
 
 ---
 
-## ⚙️ Replicabilidad
+## Replicabilidad del Trabajo
 Para ejecutar la simulación completa y reproducir los resultados exactos documentados en la investigación, ejecute los códigos en orden secuencial: `descriptive_stats.py` -> `main1.py` -> `main2.py`.
