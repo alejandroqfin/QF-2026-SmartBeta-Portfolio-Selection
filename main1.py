@@ -1,8 +1,17 @@
 """
 main1.py
-PARTE I: ROLLING WINDOW RANKINGS (SELECCIÓN DINÁMICA DE CARTERAS)
+PARTE I: RANKINGS (SELECCIÓN DINÁMICA DE CARTERAS)
 Smart Beta ETF Universe - Quantitative Finance Master's Thesis
 Autor: Alejandro Martínez
+
+Nota:
+El trabajo se encuentra completamente vectorizado y automatizado
+para permitir la replicabilidad del estudio modificando los parámetros
+según la voluntad del investigador:
+
+    - K = Tamaño de la cartera
+    - M = Tamaño de la ventana Out Of Sample
+    - c = Costes de Transacción    
 """
 
 import pandas as pd
@@ -18,10 +27,10 @@ INPUT_FILE = "100_ETFs_Smart_Beta.xlsx"
 OUTPUT_FILE = "100_ETFs_Screening.xlsx"
 VARIABLES_FILE = "screening_artifacts.joblib"
 
-# ETFs EN CARTERA
+# NÚMERO DE ETFs EN CARTERA
 K = 20
 
-# VENTANA IN SAMPLE
+# TAMAÑO DE LA VENTANA IN SAMPLE
 M = 1000
 
 # COSTES DE TRANSACCIÓN
