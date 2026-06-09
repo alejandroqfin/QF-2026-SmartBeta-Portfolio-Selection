@@ -1,7 +1,12 @@
 """
-CARTERAS MACHINE LEARNING: HRP & HERC
+MODELOS DE CLÚSTERING JERÁRQUICO MACHINE LEARNING: HRP & HERC
 Smart Beta ETF Universe - Quantitative Finance Master's Thesis
 Autor: Alejandro Martínez
+
+Nota:
+Este módulo implementa algoritmos de Machine Learning no supervisado para la 
+asignación de activos basada en grafos y clústering jerárquico, siguiendo 
+las formulaciones originales de M. López de Prado (2016) y T. Raffinot (2018).
 """
 
 import numpy as np
