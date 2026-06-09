@@ -6,7 +6,6 @@ Autor: Alejandro Martínez
 
 import numpy as np
 import pandas as pd
-import scipy.optimize as sco
 from sklearn.covariance import ledoit_wolf
 
 def mean(df_log: pd.DataFrame) -> pd.Series:
@@ -40,63 +39,6 @@ def kurtosis(df_log: pd.DataFrame) -> pd.Series:
     m2 = (deviations ** 2).sum(axis=0) / T
     m4 = (deviations ** 4).sum(axis=0) / T
     return (m4 / (m2 ** 2))
-
-def get_efficient_frontier(arithmetic_returns, num_portfolios=50, risk_free_rate=0.0, annual_factor=252):
-    """Calcula la Frontera Eficiente optimizando las carteras (Vectorizado)."""
-    mean_returns = arithmetic_returns.mean() * annual_factor
-    cov_matrix = arithmetic_returns.cov() * annual_factor
-    num_assets = len(mean_returns)
-
-    # NUEVAS FUNCIONES ANIDADAS: Álgebra matricial directa (Vectorizada con @)
-    def portfolio_return(weights):
-        return float(weights.T @ mean_returns)
-
-    def portfolio_volatility(weights):
-        return float(np.sqrt(weights.T @ cov_matrix @ weights))
-
-    def negative_sharpe(weights):
-        ret = portfolio_return(weights)
-        vol = portfolio_volatility(weights)
-        return -(ret - risk_free_rate) / vol
-
-    constraints = ({'type': 'eq', 'fun': lambda x: np.sum(x) - 1.0})
-    bounds = tuple((0.0, 1.0) for _ in range(num_assets))
-    
-    # Semilla inicial equiponderada limpia con numpy
-    initial_guess = np.full(num_assets, 1.0 / num_assets)
-
-    # A. Maximizar Ratio de Sharpe (MSRP)
-    opt_sharpe = sco.minimize(negative_sharpe, initial_guess, method='SLSQP', bounds=bounds, constraints=constraints)
-
-    # B. Minimizar Volatilidad (MVP)
-    opt_vol = sco.minimize(portfolio_volatility, initial_guess, method='SLSQP', bounds=bounds, constraints=constraints)
-
-    # C. Calcular la Frontera Eficiente
-    # Evaluamos retornos objetivo desde la cartera de mínima varianza hasta el activo con mayor retorno
-    target_returns = np.linspace(
-        portfolio_return(opt_vol.x), 
-        mean_returns.max(),          
-        num_portfolios
-    )
-
-    efficient_portfolios = []
-    for target in target_returns:
-        # Añadimos la restricción de que la cartera debe alcanzar el retorno objetivo
-        eff_constraints = (
-            {'type': 'eq', 'fun': lambda x: np.sum(x) - 1.0},
-            {'type': 'eq', 'fun': lambda x: portfolio_return(x) - target}
-        )
-        eff_opt = sco.minimize(portfolio_volatility, initial_guess, method='SLSQP', bounds=bounds, constraints=eff_constraints)
-        
-        if eff_opt.success:
-            efficient_portfolios.append({
-                'Return': target,
-                'Volatility': eff_opt.fun,
-                'Weights': eff_opt.x
-            })
-
-    df_efficient_frontier = pd.DataFrame(efficient_portfolios)
-    return df_efficient_frontier, opt_sharpe, opt_vol, mean_returns, cov_matrix
 
 def replacement_rate(
     df_rankings: pd.DataFrame,
@@ -152,8 +94,6 @@ def etf_stats(target_ids_matrix: np.ndarray, tickers_list: list) -> pd.DataFrame
     median_rank = np.full(N, np.nan)
     for i in range(N):
         if days_active[i] > 0:
-            # np.where devuelve (rows, cols). Extraemos las columnas (posiciones 0 a K-1)
-            # Sumamos 1 para que el rango sea natural (de 1 a K)
             posiciones = np.where(target_ids_matrix == i)[1] + 1
             median_rank[i] = np.median(posiciones)
 
@@ -170,19 +110,17 @@ def etf_stats(target_ids_matrix: np.ndarray, tickers_list: list) -> pd.DataFrame
 
     df_positions = pd.DataFrame(position_counts, columns=[f'Top_{i+1}' for i in range(K)])
     df_final = pd.concat([df_survival, df_positions], axis=1)
-
     df_final = df_final[df_final['Days_Active'] > 0].sort_values(by='Survival_Rate', ascending=False)
-
     return df_final.reset_index(drop=True)
 
-def transaction_costs(returns_matrix, target_ids_matrix, c=0.0010):
+def transaction_costs(returns_matrix: np.ndarray, target_ids_matrix: np.ndarray, c: float = 0.0020) -> np.ndarray:
     """
     Solo sirve para pesos equiponderados (EW) y para fricciones proporcionales (c).
     
     Args:
     returns_matrix: np.array (T, N) - Matriz estocástica de rendimientos OOS sobre el universo completo
     target_ids_matrix: np.array (T, K) - Índices (0 a N-1) de los K ETFs elegidos cada día
-    c: float - Costes de transacción (ej. 0.0010 = 10 bps)
+    c: float - Costes de transacción (ej. 0.0020 = 20 bps)
     """
     T, N = returns_matrix.shape
     K = target_ids_matrix.shape[1]
@@ -421,13 +359,13 @@ def maxDrawDown(wealth_series: pd.Series) -> float:
     # 3. Peor caída registrada
     return float(drawdowns.min())
 
-def coincident_assets_median(ids_A, ids_B, K):
+def coincident_assets_median(ids_A: np.ndarray, ids_B: np.ndarray, K: int) -> float:
     """
     Coincidencia entre universos de inversión.
     Calcula cuántos activos comparten dos carteras en cada instante t y extrae la mediana.
     Sin tener en cuenta la posición en el ranking.
     """
-    # Broadcasting: (T x K x 1) == (T x 1 x K) -> (T x K x K)
+    # Indexación en Numpy: (T x K x 1) == (T x 1 x K) -> (T x K x K)
     match_matrix = (ids_A[:, :, np.newaxis] == ids_B[:, np.newaxis, :])
     
     # Sumamos coincidencias por día y calculamos el % sobre K
