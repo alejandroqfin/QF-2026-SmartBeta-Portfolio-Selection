@@ -8,7 +8,7 @@
 
 El código está estructurado de forma que se pueda garantizar la replicabilidad total del Trabajo de Fin de Máster (TFM). 
 
-### 1. Universo de Datos
+### 1. Datos
 * `100_ETFs_Smart_Beta.xlsx`: Base de datos. Contiene la serie temporal de precios ajustados (2013-2026) del universo de 100 ETFs Smart Beta agrupados en familias.
 
 ### 2. Scripts Principales
