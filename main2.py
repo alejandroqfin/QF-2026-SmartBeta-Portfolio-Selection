@@ -1,8 +1,13 @@
 ﻿"""
 main2.py
 PARTE II: GESTIÓN DE CARTERAS, RIESGO Y PERFORMANCE
-Smart Beta ETF Universe - TFM
+Smart Beta ETF Universe - Quantitative Finance Master's Thesis
 Autor: Alejandro Martínez
+
+Nota:
+Este código procede y requiere ejecutar previamente el código de la PARTE I [main1.py] 
+Por tanto hereda las variables definidas en el código anterior [screening_artifacts.joblib]
+para estudiar el impacto de la gestión del capital.
 """
 
 import numpy as np
@@ -48,8 +53,7 @@ dias_is = len(df_rendimientos[df_rendimientos.index < OOS_START_DATE])
 dias_oos = len(T)
 pct_nulos = 100.0 * df_rendimientos.isna().sum().sum() / df_rendimientos.size
 
-print(" DATOS")
-
+print("DATOS")
 print("\n Configuración de la Cartera ")
 print(f"  • Universo de ETFs (N):      {len(tickers)}")
 print(f"  • Activos en cartera (K):   {K}")
@@ -100,7 +104,6 @@ for ratio in ratios:
         
         rendimientos_oos[ratio][perfil] = r_neto   # 12 x 8 x (T x 1)
         riqueza_oos[ratio][perfil] = riq_neta      # 12 x 8 x (T x 1)
-
     
 # CREAMOS MATRICES DE RENDIMIENTOS OOS POR RATIO: 12 x (T x 8)
 rendimientos_oos_por_ratio = {}
@@ -234,85 +237,27 @@ RC_abs_MVS, RC_rel_MVS = risk_contribution(w_MVS, Sigma)
 RC_abs_HRP, RC_rel_HRP = risk_contribution(w_HRP, Sigma)
 RC_abs_HERC, RC_rel_HERC = risk_contribution(w_HERC, Sigma)
 
-# 1. EQUIPONDERADA (EW)
-print("\n1. EQUALLYWEIGHTED (EW)")
-print(f"   ► Media                   : {mu_EW:.8f}")
-print(f"   ► Varianza                : {var_EW:.10f}")
-print(f"   ► Volatilidad             : {np.sqrt(var_EW):.4f}")
-print(f"   ► Ratio de Sharpe         : {SR_EW:.4f}")
-print(f"   ► Pesos                   : {np.round(w_EW * 100, 2)}%")
-print(f"   ► RC Absoluta             : {np.round(RC_abs_EW, 4)}")
-print(f"   ► RC Relativa (%)         : {np.round(RC_rel_EW * 100, 2)}%")
+# MÉTRICAS DE LOS MODELOS IN-SAMPLE
+in_sample_portfolios = [
+    ("EQUALLYWEIGHTED (EW)", mu_EW, var_EW, SR_EW, w_EW, RC_abs_EW, RC_rel_EW),
+    ("VOLATILITY TIMING (VT)", mu_VT, var_VT, SR_VT, w_VT, RC_abs_VT, RC_rel_VT),
+    ("REWARD-TO-RISK TIMING (RRT)", mu_RRT, var_RRT, SR_RRT, w_RRT, RC_abs_RRT, RC_rel_RRT),
+    ("GLOBAL MINIMUM VARIANCE (GMV)", mu_GMV, var_GMV, SR_GMV, w_GMV, RC_abs_GMV, RC_rel_GMV),
+    ("EQUAL RISK CONTRIBUTION (ERC)", mu_ERC, var_ERC, SR_ERC, w_ERC, RC_abs_ERC, RC_rel_ERC),
+    ("MEAN-VARIANCE-SKEWNESS (MVS)", mu_MVS, var_MVS, SR_MVS, w_MVS, RC_abs_MVS, RC_rel_MVS),
+    ("HIERARCHICAL RISK PARITY (HRP)", mu_HRP, var_HRP, SR_HRP, w_HRP, RC_abs_HRP, RC_rel_HRP),
+    ("HIERARCHICAL EQUAL RISK CONTRIBUTION (HERC)", mu_HERC, var_HERC, SR_HERC, w_HERC, RC_abs_HERC, RC_rel_HERC)
+]
 
-# 2. VOLATILITY TIMING (VT)
-print("\n2. VOLATILITY TIMING (VT)")
-print(f"   ► Media                   : {mu_VT:.8f}")
-print(f"   ► Varianza                : {var_VT:.10f}")
-print(f"   ► Volatilidad             : {np.sqrt(var_VT):.4f}")
-print(f"   ► Ratio de Sharpe         : {SR_VT:.4f}")
-print(f"   ► Pesos                   : {np.round(w_VT * 100, 2)}%")
-print(f"   ► RC Absoluta             : {np.round(RC_abs_VT, 4)}")
-print(f"   ► RC Relativa (%)         : {np.round(RC_rel_VT * 100, 2)}%")
-
-# 3. REWARD-TO-RISK TIMING (RRT)
-print("\n3. REWARD-TO-RISK TIMING (RRT)")
-print(f"   ► Media                   : {mu_RRT:.8f}")
-print(f"   ► Varianza                : {var_RRT:.10f}")
-print(f"   ► Volatilidad             : {np.sqrt(var_RRT):.4f}")
-print(f"   ► Ratio de Sharpe         : {SR_RRT:.4f}")
-print(f"   ► Pesos                   : {np.round(w_RRT * 100, 2)}%")
-print(f"   ► RC Absoluta             : {np.round(RC_abs_RRT, 4)}")
-print(f"   ► RC Relativa (%)         : {np.round(RC_rel_RRT * 100, 2)}%")
-    
-# 4. MINIMA VARIANZA GLOBAL (GMV)
-print("\n4. GLOBAL MINIMUM VARIANCE (GMV)")
-print(f"   ► Media                   : {mu_GMV:.8f}")
-print(f"   ► Varianza                : {var_GMV:.10f}")
-print(f"   ► Volatilidad             : {np.sqrt(var_GMV):.4f}")
-print(f"   ► Ratio de Sharpe         : {SR_GMV:.4f}")
-print(f"   ► Pesos                   : {np.round(w_GMV * 100, 2)}%")
-print(f"   ► RC Absoluta             : {np.round(RC_abs_GMV, 4)}")
-print(f"   ► RC Relativa (%)         : {np.round(RC_rel_GMV * 100, 2)}%")
-
-# 5. EQUAL RISK CONTRIBUTION (ERC)
-print("\n5. EQUAL RISK CONTRIBUTION (ERC)")
-print(f"   ► Media                   : {mu_ERC:.8f}")
-print(f"   ► Varianza                : {var_ERC:.10f}")
-print(f"   ► Volatilidad             : {np.sqrt(var_ERC):.4f}")
-print(f"   ► Ratio de Sharpe         : {SR_ERC:.4f}")
-print(f"   ► Pesos                   : {np.round(w_ERC * 100, 2)}%")
-print(f"   ► RC Absoluta             : {np.round(RC_abs_ERC, 4)}")
-print(f"   ► RC Relativa (%)         : {np.round(RC_rel_ERC * 100, 2)}%")
-
-# 6. MEAN-VARIANCE-SKEWNESS (MVS)
-print("\n6. MEAN-VARIANCE-SKEWNESS (MVS)")
-print(f"   ► Media                   : {mu_MVS:.8f}")
-print(f"   ► Varianza                : {var_MVS:.10f}")
-print(f"   ► Volatilidad             : {np.sqrt(var_MVS):.4f}")
-print(f"   ► Ratio de Sharpe         : {SR_MVS:.4f}")
-print(f"   ► Pesos                   : {np.round(w_MVS * 100, 2)}%")
-print(f"   ► RC Absoluta             : {np.round(RC_abs_MVS, 4)}")
-print(f"   ► RC Relativa (%)         : {np.round(RC_rel_MVS * 100, 2)}%")
-
-# 7. HIERARCHICAL RISK PARITY (HRP)
-print("\n7. HIERARCHICAL RISK PARITY (HRP)")
-print(f"   ► Media                   : {mu_HRP:.8f}")
-print(f"   ► Varianza                : {var_HRP:.10f}")
-print(f"   ► Volatilidad             : {np.sqrt(var_HRP):.4f}")
-print(f"   ► Ratio de Sharpe         : {SR_HRP:.4f}")
-print(f"   ► Pesos                   : {np.round(w_HRP * 100, 2)}%")
-print(f"   ► RC Absoluta             : {np.round(RC_abs_HRP, 4)}")
-print(f"   ► RC Relativa (%)         : {np.round(RC_rel_HRP * 100, 2)}%")
-
-# 8. HIERARCHICAL EQUAL RISK CONTRIBUTION (HERC)
-print("\n8. HIERARCHICAL EQUAL RISK CONTRIBUTION (HERC)")
-print(f"   ► Media                   : {mu_HERC:.8f}")
-print(f"   ► Varianza                : {var_HERC:.10f}")
-print(f"   ► Volatilidad             : {np.sqrt(var_HERC):.4f}")
-print(f"   ► Ratio de Sharpe         : {SR_HERC:.4f}")
-print(f"   ► Pesos                   : {np.round(w_HERC * 100, 2)}%")
-print(f"   ► RC Absoluta             : {np.round(RC_abs_HERC, 4)}")
-print(f"   ► RC Relativa (%)         : {np.round(RC_rel_HERC * 100, 2)}%")
+for idx, (name, mu_val, var_val, sr_val, w_val, rc_abs_val, rc_rel_val) in enumerate(in_sample_portfolios, 1):
+    print(f"\n{idx}. {name}")
+    print(f"   ► Media                    : {mu_val:.8f}")
+    print(f"   ► Varianza                 : {var_val:.10f}")
+    print(f"   ► Volatilidad              : {np.sqrt(var_val):.4f}")
+    print(f"   ► Ratio de Sharpe          : {sr_val:.4f}")
+    print(f"   ► Pesos                    : {np.round(w_val * 100, 2)}%")
+    print(f"   ► RC Absoluta              : {np.round(rc_abs_val, 4)}")
+    print(f"   ► RC Relativa (%)          : {np.round(rc_rel_val * 100, 2)}%")
 
 # CREAMOS MATRICES DE RIQUEZA OOS POR RATIO: 12 x (T x 8)
 riqueza_oos_por_ratio = {}
@@ -336,7 +281,6 @@ resultados_oos = pd.DataFrame({
 }).sort_values(by='Sharpe Ratio Anualizado', ascending=False)
 
 # GRÁFICOS DE SPREADS
-
 # I) QUÉ RATIO ELIGE MEJOR?
 selection_spreads_vs_sr_benchmark = plot_selection_spreads(diccionario_riqueza=riqueza_oos_por_ratio, fechas_oos=T, perfiles=perfiles, ratios=[r for r in ratios if r != 'SR'])
 plot_single_selection_spread(diccionario_riqueza=riqueza_oos_por_ratio, ratios=[r for r in ratios if r != 'SR'], base_strategy=perfiles[0], benchmark='SR')
@@ -438,12 +382,8 @@ print(f"       ↳ Sharpe Ratio : {best_sr['Sharpe_Ratio']:.4f} | Riqueza Final:
 print(f"    ► Estrategia menos Eficiente: {worst_sr['Ratio_Seleccion']} + {worst_sr['Perfil_Pesos']}")
 print(f"       ↳ Sharpe Ratio : {worst_sr['Sharpe_Ratio']:.4f} | Riqueza Final: {worst_sr['Riqueza_Final']:.4f} (DD: -{worst_sr['MaxDrawDown_%']:.2f}%)")
 
-# ANEXO C: ANÁLISIS DE ROBUSTEZ
-
-# C.1. ANÁLISIS DE SENSIBILIDAD DEL COSTE DE TRANSACCIÓN (c = 0.0000)
-
-print(" ANEXO C: ANÁLISIS DE SENSIBILIDAD (c = 0.0000)")
-
+# ANEXO C.2. - ANÁLISIS DE SENSIBILIDAD A LOS COSTES DE TRANSACCIÓN (c = 0.0000)
+print(" ANEXO C.2. - ANÁLISIS DE SENSIBILIDAD (c = 0.0000)")
 rendimientos_oos_c0 = {}
 riqueza_oos_c0 = {}
 for ratio in ratios:
@@ -503,7 +443,7 @@ for ratio, wealth_df in riqueza_oos_por_ratio_c0.items():
         
 summary_df_c0 = pd.DataFrame(resumen_c0)
 
-# TABLA DE RESULTADOS FINALES PARA c=0.0
+# TABLA DE RESULTADOS FINALES PARA c = 0.0000
 print(" [ ROBUSTEZ: PANEL A: RIQUEZA ACUMULADA (c = 0.0) ]")
 
 summary_ranked_ret_c0 = summary_df_c0.sort_values(by='Riqueza_Final', ascending=False).reset_index(drop=True)
