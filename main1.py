@@ -1,7 +1,7 @@
 """
 main1.py
 PARTE I: ROLLING WINDOW RANKINGS (SELECCIÓN DINÁMICA DE CARTERAS)
-Smart Beta ETF Universe - TFM
+Smart Beta ETF Universe - Quantitative Finance Master's Thesis
 Autor: Alejandro Martínez
 """
 
@@ -68,9 +68,8 @@ dias_is = len(df_rendimientos[df_rendimientos.index < OOS_START_DATE])
 dias_oos = len(df_rendimientos[df_rendimientos.index >= OOS_START_DATE])
 pct_nulos = 100.0 * df_rendimientos.isna().sum().sum() / df_rendimientos.size
 
-print(" DATOS")
-
-print("\n Configuración de la Cartera ")
+print("DATOS:")
+print(" Configuración de la Cartera ")
 print(f"  • Universo de ETFs (N):     {len(tickers)}")
 print(f"  • Objetivo en cartera (K):  {K}")
 print(f"  • Costes de transacc. (c):  {c}")
@@ -87,9 +86,8 @@ print(f"  • Días Out-of-Sample (OOS): {dias_oos}")
 print(f"  • Tamaño de Ventana IS (M): {M} días")
 print(f"  • NaNs:                     {pct_nulos:.4f} %")
 
-# PARTE I: SIMULACIÓN DE RANKINGS - ROLLING WINDOW (M = 1000 DÍAS)
+# PARTE 1.I: SIMULACIÓN DE RANKINGS - ROLLING WINDOW (M = 1000 DÍAS)
 
-# SIMULACIÓN
 ratios = ['SR', 'SR_corr', 'MSR', 'VaRR1', 'VaRR5', 'VaRR10', 'Omega', 'UPR', 'Kappa3', 'Sortino', 'GR1', 'GR5']
 rankings_oos, series_oos = ROLLING_WINDOW_RANKINGS(df_rendimientos, OOS_START_DATE, K, ratios, M=M)
 
@@ -142,7 +140,7 @@ ids_rolling_Sortino = (ranking_Sortino_oos.iloc[t_prev].values - 1).astype(int)
 ids_rolling_GR1 = (ranking_GR1_oos.iloc[t_prev].values - 1).astype(int)
 ids_rolling_GR5 = (ranking_GR5_oos.iloc[t_prev].values - 1).astype(int)
 
-print("\n FASE 1: ANÁLISIS DE COINCIDENCIA DE ACTIVOS (MEDIANA HISTÓRICA %)")
+print("\nPARTE 1.1. - ANÁLISIS DE COINCIDENCIA DE ACTIVOS (MEDIANA HISTÓRICA %)")
 
 ranking_ids = {
     'SR': ids_rolling_SR,
@@ -171,6 +169,7 @@ for r1 in ratios_list:
             coincidence_matrix.loc[r1, r2] = np.round(med_coinc, 2)
 
 print("\nMatriz Mediana de Coincidencia de Activos (%):")
+print()
 print(coincidence_matrix.to_string())
 
 plot_coincidence_heatmap(
@@ -178,8 +177,9 @@ plot_coincidence_heatmap(
     save_path="heatmap_coincidencia_fase1.pdf"
 )
 
+# PARTE 1.II: ANÁLISIS DEL REBALANCEO
 
-# PARTE II: ANÁLISIS DEL REBALANCEO
+print("\nPARTE 1.2. - ANÁLISIS DEL REBALANCEO DE LOS ACTIVOS")
 
 # CALCULAMOS EL NÚMERO DE ETFS QUE ENTRAN CADA DÍA A LA CARTERA
 replacement_rate_SR, freq_SR = replacement_rate(ranking_SR_oos, T, return_frequency=True)
@@ -241,105 +241,15 @@ df_turnover_freq = pd.DataFrame({
     'GR5': freq_GR5
 })
 
+# FRECUENCIAS DE REBALANCEO DIARIO
 print("\nFrecuencia de rebalanceo (Número de ETFs nuevos en cartera):")
 
-# 1. SHARPE RATIO
-print("\n   ► Sharpe Ratio :")
-print(f"      • 0 ETFs nuevos: {df_turnover_freq['SR'].get(0, 0)} veces")
-print(f"      • 1 ETFs nuevos: {df_turnover_freq['SR'].get(1, 0)} veces")
-print(f"      • 2 ETFs nuevos: {df_turnover_freq['SR'].get(2, 0)} veces")
-print(f"      • 3 ETFs nuevos: {df_turnover_freq['SR'].get(3, 0)} veces")
-print(f"      • 4 ETFs nuevos: {df_turnover_freq['SR'].get(4, 0)} veces")
+for ratio in ratios:
+    print(f"\n   ► {ratio}:")
+    for i in range(5):
+        print(f"      • {i} ETFs nuevos: {df_turnover_freq[ratio].get(i, 0)} veces")
 
-# 2. SHARPE RATIO CORRELATION
-print("\n   ► Sharpe Correlation :")
-print(f"      • 0 ETFs nuevos: {df_turnover_freq['SR_corr'].get(0, 0)} veces")
-print(f"      • 1 ETFs nuevos: {df_turnover_freq['SR_corr'].get(1, 0)} veces")
-print(f"      • 2 ETFs nuevos: {df_turnover_freq['SR_corr'].get(2, 0)} veces")
-print(f"      • 3 ETFs nuevos: {df_turnover_freq['SR_corr'].get(3, 0)} veces")
-print(f"      • 4 ETFs nuevos: {df_turnover_freq['SR_corr'].get(4, 0)} veces")
-
-# 3. MARGINAL SHARPE RATIO
-print("\n   ► Marginal Sharpe Ratio (MSR) :")
-print(f"      • 0 ETFs nuevos: {df_turnover_freq['MSR'].get(0, 0)} veces")
-print(f"      • 1 ETFs nuevos: {df_turnover_freq['MSR'].get(1, 0)} veces")
-print(f"      • 2 ETFs nuevos: {df_turnover_freq['MSR'].get(2, 0)} veces")
-print(f"      • 3 ETFs nuevos: {df_turnover_freq['MSR'].get(3, 0)} veces")
-print(f"      • 4 ETFs nuevos: {df_turnover_freq['MSR'].get(4, 0)} veces")
-
-# 4. VAR RATIO 1%
-print("\n   ► VaR Ratio 1% :")
-print(f"      • 0 ETFs nuevos: {df_turnover_freq['VaRR1'].get(0, 0)} veces")
-print(f"      • 1 ETFs nuevos: {df_turnover_freq['VaRR1'].get(1, 0)} veces")
-print(f"      • 2 ETFs nuevos: {df_turnover_freq['VaRR1'].get(2, 0)} veces")
-print(f"      • 3 ETFs nuevos: {df_turnover_freq['VaRR1'].get(3, 0)} veces")
-print(f"      • 4 ETFs nuevos: {df_turnover_freq['VaRR1'].get(4, 0)} veces")
-
-# 5. VAR RATIO 5%
-print("\n   ► VaR Ratio 5% :")
-print(f"      • 0 ETFs nuevos: {df_turnover_freq['VaRR5'].get(0, 0)} veces")
-print(f"      • 1 ETFs nuevos: {df_turnover_freq['VaRR5'].get(1, 0)} veces")
-print(f"      • 2 ETFs nuevos: {df_turnover_freq['VaRR5'].get(2, 0)} veces")
-print(f"      • 3 ETFs nuevos: {df_turnover_freq['VaRR5'].get(3, 0)} veces")
-print(f"      • 4 ETFs nuevos: {df_turnover_freq['VaRR5'].get(4, 0)} veces")
-
-# 6. VAR RATIO 10%
-print("\n   ► VaR Ratio 10%:")
-print(f"      • 0 ETFs nuevos: {df_turnover_freq['VaRR10'].get(0, 0)} veces")
-print(f"      • 1 ETFs nuevos: {df_turnover_freq['VaRR10'].get(1, 0)} veces")
-print(f"      • 2 ETFs nuevos: {df_turnover_freq['VaRR10'].get(2, 0)} veces")
-print(f"      • 3 ETFs nuevos: {df_turnover_freq['VaRR10'].get(3, 0)} veces")
-print(f"      • 4 ETFs nuevos: {df_turnover_freq['VaRR10'].get(4, 0)} veces")
-
-# 7. OMEGA
-print("\n   ► Omega:")
-print(f"      • 0 ETFs nuevos: {df_turnover_freq['Omega'].get(0, 0)} veces")
-print(f"      • 1 ETFs nuevos: {df_turnover_freq['Omega'].get(1, 0)} veces")
-print(f"      • 2 ETFs nuevos: {df_turnover_freq['Omega'].get(2, 0)} veces")
-print(f"      • 3 ETFs nuevos: {df_turnover_freq['Omega'].get(3, 0)} veces")
-print(f"      • 4 ETFs nuevos: {df_turnover_freq['Omega'].get(4, 0)} veces")
-
-# 8. UPR
-print("\n   ► UPR:")
-print(f"      • 0 ETFs nuevos: {df_turnover_freq['UPR'].get(0, 0)} veces")
-print(f"      • 1 ETFs nuevos: {df_turnover_freq['UPR'].get(1, 0)} veces")
-print(f"      • 2 ETFs nuevos: {df_turnover_freq['UPR'].get(2, 0)} veces")
-print(f"      • 3 ETFs nuevos: {df_turnover_freq['UPR'].get(3, 0)} veces")
-print(f"      • 4 ETFs nuevos: {df_turnover_freq['UPR'].get(4, 0)} veces")
-
-# 9. KAPPA3
-print("\n   ► Kappa3:")
-print(f"      • 0 ETFs nuevos: {df_turnover_freq['Kappa3'].get(0, 0)} veces")
-print(f"      • 1 ETFs nuevos: {df_turnover_freq['Kappa3'].get(1, 0)} veces")
-print(f"      • 2 ETFs nuevos: {df_turnover_freq['Kappa3'].get(2, 0)} veces")
-print(f"      • 3 ETFs nuevos: {df_turnover_freq['Kappa3'].get(3, 0)} veces")
-print(f"      • 4 ETFs nuevos: {df_turnover_freq['Kappa3'].get(4, 0)} veces")
-
-# 10. SORTINO
-print("\n   ► Sortino:")
-print(f"      • 0 ETFs nuevos: {df_turnover_freq['Sortino'].get(0, 0)} veces")
-print(f"      • 1 ETFs nuevos: {df_turnover_freq['Sortino'].get(1, 0)} veces")
-print(f"      • 2 ETFs nuevos: {df_turnover_freq['Sortino'].get(2, 0)} veces")
-print(f"      • 3 ETFs nuevos: {df_turnover_freq['Sortino'].get(3, 0)} veces")
-print(f"      • 4 ETFs nuevos: {df_turnover_freq['Sortino'].get(4, 0)} veces")
-
-# 11. GR1
-print("\n   ► GR1:")
-print(f"      • 0 ETFs nuevos: {df_turnover_freq['GR1'].get(0, 0)} veces")
-print(f"      • 1 ETFs nuevos: {df_turnover_freq['GR1'].get(1, 0)} veces")
-print(f"      • 2 ETFs nuevos: {df_turnover_freq['GR1'].get(2, 0)} veces")
-print(f"      • 3 ETFs nuevos: {df_turnover_freq['GR1'].get(3, 0)} veces")
-print(f"      • 4 ETFs nuevos: {df_turnover_freq['GR1'].get(4, 0)} veces")
-
-# 12. GR5
-print("\n   ► GR5:")
-print(f"      • 0 ETFs nuevos: {df_turnover_freq['GR5'].get(0, 0)} veces")
-print(f"      • 1 ETFs nuevos: {df_turnover_freq['GR5'].get(1, 0)} veces")
-print(f"      • 2 ETFs nuevos: {df_turnover_freq['GR5'].get(2, 0)} veces")
-print(f"      • 3 ETFs nuevos: {df_turnover_freq['GR5'].get(3, 0)} veces")
-print(f"      • 4 ETFs nuevos: {df_turnover_freq['GR5'].get(4, 0)} veces")
-
-# GRÁFICO DE FRECUENCIA DE REBALANCEO
+# GRÁFICO DE FRECUENCIAS DE REBALANCEO
 plot_turnover_frequency({
         'SR': freq_SR,
         'SR_corr': freq_SR_corr,
@@ -356,13 +266,14 @@ plot_turnover_frequency({
     save_path="turnover_histograms.pdf"
 )
 
-# PARTE III: ANÁLISIS DE LOS COSTES DE TRANSACCIÓN
+# PARTE 1.III: ANÁLISIS DE LOS COSTES DE TRANSACCIÓN
+
+print("\nPARTE 1.3. - IMPACTO DE LOS COSTES DE TRANSACCIÓN EN LA RIQUEZA")
 
 # CARTERA EQUIPONDERADA
 w = W_EW(K)
 
-# A) SIMULACIÓN DE CARTERA ROLLING (DINÁMICA)
-
+# A) SIMULACIÓN DE CARTERA DE SELECCIÓN DINÁMICA (ROLLING)
 # EXTRAEMOS LA SUBMATRIZ DE RENDIMIENTOS OOS: (T X 100)
 R_oos = df_rendimientos.loc[T].values
 
@@ -460,8 +371,7 @@ wealth_buyhold_Sortino = W0 * (1 + R_port_reb_Sortino).cumprod()
 wealth_buyhold_GR1 = W0 * (1 + R_port_reb_GR1).cumprod()
 wealth_buyhold_GR5 = W0 * (1 + R_port_reb_GR5).cumprod()
 
-# C) COSTES DE TRANSACCIÓN Y RIQUEZA NETA
-c = 0.0020
+# C) COSTES DE TRANSACCIÓN (c) Y RIQUEZA NETA
 
 # MATRICES CONSTANTES PARA EL BENCHMARK (T X K)
 ids_bh_matrix_SR = np.tile(ids_buyhold_SR_pos, (len(T), 1))
@@ -477,8 +387,7 @@ ids_bh_matrix_Sortino = np.tile(ids_buyhold_Sortino_pos, (len(T), 1))
 ids_bh_matrix_GR1 = np.tile(ids_buyhold_GR1_pos, (len(T), 1))
 ids_bh_matrix_GR5 = np.tile(ids_buyhold_GR5_pos, (len(T), 1))
 
-
-# RIQUEZA NETA - ESTRATEGIA ROLLING (SUSTITUCIÓN + DERIVA)
+# RIQUEZA NETA - ESTRATEGIA DINÁMICA (SUSTITUCIÓN + DERIVA)
 wealth_rolling_SR_netos = pd.Series(transaction_costs(R_oos, ids_rolling_SR, c=c), index=T)
 wealth_rolling_SR_corr_netos = pd.Series(transaction_costs(R_oos, ids_rolling_SR_corr, c=c), index=T)
 wealth_rolling_MSR_netos = pd.Series(transaction_costs(R_oos, ids_rolling_MSR, c=c), index=T)
@@ -507,7 +416,6 @@ wealth_buyhold_GR1_netos = pd.Series(transaction_costs(R_oos, ids_bh_matrix_GR1,
 wealth_buyhold_GR5_netos = pd.Series(transaction_costs(R_oos, ids_bh_matrix_GR5, c=c), index=T)
 
 # D) GRÁFICOS Y RESULTADOS
-
 diccionario_resultados = {
     'SR':      (wealth_rolling_SR, wealth_rolling_SR_netos, wealth_buyhold_SR, wealth_buyhold_SR_netos, 'blue'),
     'SR_corr': (wealth_rolling_SR_corr, wealth_rolling_SR_corr_netos, wealth_buyhold_SR_corr, wealth_buyhold_SR_corr_netos, 'purple'),
@@ -526,10 +434,10 @@ diccionario_resultados = {
 plot_cumulative_returns(diccionario_resultados)
 
 # RESULTADOS DE LA RIQUEZA ACUMULADA
-print("\nResultados: Riqueza Acumulada")
+print("\nRESULTADOS: RIQUEZA ACUMULADA (BAJO COSTES DE TRANSACCIÓN): SELECCIÓN ACTIVA VS PASIVA")
 
-# BENCHMARK BRUTO
-print("\n   ► REBALANCED BUY & HOLD (sin costes):")
+# a) PASIVA SIN COSTES
+print("\n   ► EQUIPONDERADA CON REBALANCEO DIARIO (SELECCIÓN PASIVA) [sin costes]:")
 print(f"     Sharpe Ratio : €{wealth_buyhold_SR.iloc[-1]:.4f}")
 print(f"     Sharpe Corr  : €{wealth_buyhold_SR_corr.iloc[-1]:.4f}")
 print(f"     MSR          : €{wealth_buyhold_MSR.iloc[-1]:.4f}")
@@ -543,8 +451,8 @@ print(f"     Sortino      : €{wealth_buyhold_Sortino.iloc[-1]:.4f}")
 print(f"     GR1          : €{wealth_buyhold_GR1.iloc[-1]:.4f}")
 print(f"     GR5          : €{wealth_buyhold_GR5.iloc[-1]:.4f}")
 
-# ROLLING BRUTO
-print("\n   ► ROLLING WINDOW (sin costes):")
+# b) ACTIVA SIN COSTES
+print("\n   ► SELECCIÓN DINÁMICA [sin costes]:")
 print(f"     Sharpe Ratio : €{wealth_rolling_SR.iloc[-1]:.4f}")
 print(f"     Sharpe Corr  : €{wealth_rolling_SR_corr.iloc[-1]:.4f}")
 print(f"     MSR          : €{wealth_rolling_MSR.iloc[-1]:.4f}")
@@ -558,8 +466,8 @@ print(f"     Sortino      : €{wealth_rolling_Sortino.iloc[-1]:.4f}")
 print(f"     GR1          : €{wealth_rolling_GR1.iloc[-1]:.4f}")
 print(f"     GR5          : €{wealth_rolling_GR5.iloc[-1]:.4f}")
 
-# BENCHMARK NETO
-print(f"\n   ► REBALANCED BUY & HOLD - con costes de transacción - ({c * 10000} bps):")
+# c) PASIVA CON COSTES
+print(f"\n   ► EQUIPONDERADA CON REBALANCEO DIARIO (SELECCIÓN PASIVA) [c = {c * 10000} bps]:")
 print(f"     Sharpe Ratio : €{wealth_buyhold_SR_netos.iloc[-1]:.4f}")
 print(f"     Sharpe Corr  : €{wealth_buyhold_SR_corr_netos.iloc[-1]:.4f}")
 print(f"     MSR          : €{wealth_buyhold_MSR_netos.iloc[-1]:.4f}")
@@ -573,8 +481,8 @@ print(f"     Sortino      : €{wealth_buyhold_Sortino_netos.iloc[-1]:.4f}")
 print(f"     GR1          : €{wealth_buyhold_GR1_netos.iloc[-1]:.4f}")
 print(f"     GR5          : €{wealth_buyhold_GR5_netos.iloc[-1]:.4f}")
 
-# ROLLING NETO
-print(f"\n   ► ROLLING WINDOW - con costes de transacción - ({c * 10000} bps):")
+# d) ACTIVA CON COSTES
+print(f"\n   ► SELECCIÓN DINÁMICA [c = {c * 10000} bps]:")
 print(f"     Sharpe Ratio : €{wealth_rolling_SR_netos.iloc[-1]:.4f}")
 print(f"     Sharpe Corr  : €{wealth_rolling_SR_corr_netos.iloc[-1]:.4f}")
 print(f"     MSR          : €{wealth_rolling_MSR_netos.iloc[-1]:.4f}")
@@ -590,7 +498,7 @@ print(f"     GR5          : €{wealth_rolling_GR5_netos.iloc[-1]:.4f}")
 
 plt.show(block=True)
 
-# PARTE IV: ESTADÍSTICAS DE SELECCIÓN
+# PARTE 1.IV: ESTADÍSTICAS DE SELECCIÓN
 
 # ESTADÍSTICAS DE APARICIÓN Y POSICIÓN DE ETFS
 stats_SR = etf_stats(ids_rolling_SR, tickers)
@@ -620,397 +528,20 @@ stats_Sortino = stats_Sortino.sort_values(by='Days_Active', ascending=False).res
 stats_GR1 = stats_GR1.sort_values(by='Days_Active', ascending=False).reset_index(drop=True)
 stats_GR5 = stats_GR5.sort_values(by='Days_Active', ascending=False).reset_index(drop=True)
 
-print("\nTop 5 ETFs que más tiempo han permanecido en cartera:")
-
-# 1. SHARPE RATIO
-print("\n   ► Sharpe Ratio:")
-print(f"      1. {stats_SR.iloc[0]['Ticker']:<10} ({stats_SR.iloc[0]['Days_Active']} días)")
-print(f"      2. {stats_SR.iloc[1]['Ticker']:<10} ({stats_SR.iloc[1]['Days_Active']} días)")
-print(f"      3. {stats_SR.iloc[2]['Ticker']:<10} ({stats_SR.iloc[2]['Days_Active']} días)")
-print(f"      4. {stats_SR.iloc[3]['Ticker']:<10} ({stats_SR.iloc[3]['Days_Active']} días)")
-print(f"      5. {stats_SR.iloc[4]['Ticker']:<10} ({stats_SR.iloc[4]['Days_Active']} días)")
-
-# 2. SHARPE CORRELATION
-print("\n   ► Sharpe Correlation:")
-print(f"      1. {stats_SR_corr.iloc[0]['Ticker']:<10} ({stats_SR_corr.iloc[0]['Days_Active']} días)")
-print(f"      2. {stats_SR_corr.iloc[1]['Ticker']:<10} ({stats_SR_corr.iloc[1]['Days_Active']} días)")
-print(f"      3. {stats_SR_corr.iloc[2]['Ticker']:<10} ({stats_SR_corr.iloc[2]['Days_Active']} días)")
-print(f"      4. {stats_SR_corr.iloc[3]['Ticker']:<10} ({stats_SR_corr.iloc[3]['Days_Active']} días)")
-print(f"      5. {stats_SR_corr.iloc[4]['Ticker']:<10} ({stats_SR_corr.iloc[4]['Days_Active']} días)")
-
-# 3. MARGINAL SHARPE RATIO
-print("\n   ► Marginal Sharpe Ratio (MSR):")
-print(f"      1. {stats_MSR.iloc[0]['Ticker']:<10} ({stats_MSR.iloc[0]['Days_Active']} días)")
-print(f"      2. {stats_MSR.iloc[1]['Ticker']:<10} ({stats_MSR.iloc[1]['Days_Active']} días)")
-print(f"      3. {stats_MSR.iloc[2]['Ticker']:<10} ({stats_MSR.iloc[2]['Days_Active']} días)")
-print(f"      4. {stats_MSR.iloc[3]['Ticker']:<10} ({stats_MSR.iloc[3]['Days_Active']} días)")
-print(f"      5. {stats_MSR.iloc[4]['Ticker']:<10} ({stats_MSR.iloc[4]['Days_Active']} días)")
-
-# 4. VAR RATIO 1%
-print("\n   ► VaR Ratio 1%:")
-print(f"      1. {stats_VaRR1.iloc[0]['Ticker']:<10} ({stats_VaRR1.iloc[0]['Days_Active']} días)")
-print(f"      2. {stats_VaRR1.iloc[1]['Ticker']:<10} ({stats_VaRR1.iloc[1]['Days_Active']} días)")
-print(f"      3. {stats_VaRR1.iloc[2]['Ticker']:<10} ({stats_VaRR1.iloc[2]['Days_Active']} días)")
-print(f"      4. {stats_VaRR1.iloc[3]['Ticker']:<10} ({stats_VaRR1.iloc[3]['Days_Active']} días)")
-print(f"      5. {stats_VaRR1.iloc[4]['Ticker']:<10} ({stats_VaRR1.iloc[4]['Days_Active']} días)")
-
-# 5. VAR RATIO 5%
-print("\n   ► VaR Ratio 5%:")
-print(f"      1. {stats_VaRR5.iloc[0]['Ticker']:<10} ({stats_VaRR5.iloc[0]['Days_Active']} días)")
-print(f"      2. {stats_VaRR5.iloc[1]['Ticker']:<10} ({stats_VaRR5.iloc[1]['Days_Active']} días)")
-print(f"      3. {stats_VaRR5.iloc[2]['Ticker']:<10} ({stats_VaRR5.iloc[2]['Days_Active']} días)")
-print(f"      4. {stats_VaRR5.iloc[3]['Ticker']:<10} ({stats_VaRR5.iloc[3]['Days_Active']} días)")
-print(f"      5. {stats_VaRR5.iloc[4]['Ticker']:<10} ({stats_VaRR5.iloc[4]['Days_Active']} días)")
-
-# 6. VAR RATIO 10%
-print("\n   ► VaR Ratio 10%:")
-print(f"      1. {stats_VaRR10.iloc[0]['Ticker']:<10} ({stats_VaRR10.iloc[0]['Days_Active']} días)")
-print(f"      2. {stats_VaRR10.iloc[1]['Ticker']:<10} ({stats_VaRR10.iloc[1]['Days_Active']} días)")
-print(f"      3. {stats_VaRR10.iloc[2]['Ticker']:<10} ({stats_VaRR10.iloc[2]['Days_Active']} días)")
-print(f"      4. {stats_VaRR10.iloc[3]['Ticker']:<10} ({stats_VaRR10.iloc[3]['Days_Active']} días)")
-print(f"      5. {stats_VaRR10.iloc[4]['Ticker']:<10} ({stats_VaRR10.iloc[4]['Days_Active']} días)")
-
-# 7. OMEGA
-print("\n   ► Omega:")
-print(f"      1. {stats_Omega.iloc[0]['Ticker']:<10} ({stats_Omega.iloc[0]['Days_Active']} días)")
-print(f"      2. {stats_Omega.iloc[1]['Ticker']:<10} ({stats_Omega.iloc[1]['Days_Active']} días)")
-print(f"      3. {stats_Omega.iloc[2]['Ticker']:<10} ({stats_Omega.iloc[2]['Days_Active']} días)")
-print(f"      4. {stats_Omega.iloc[3]['Ticker']:<10} ({stats_Omega.iloc[3]['Days_Active']} días)")
-print(f"      5. {stats_Omega.iloc[4]['Ticker']:<10} ({stats_Omega.iloc[4]['Days_Active']} días)")
-
-# 8. UPR
-print("\n   ► UPR:")
-print(f"      1. {stats_UPR.iloc[0]['Ticker']:<10} ({stats_UPR.iloc[0]['Days_Active']} días)")
-print(f"      2. {stats_UPR.iloc[1]['Ticker']:<10} ({stats_UPR.iloc[1]['Days_Active']} días)")
-print(f"      3. {stats_UPR.iloc[2]['Ticker']:<10} ({stats_UPR.iloc[2]['Days_Active']} días)")
-print(f"      4. {stats_UPR.iloc[3]['Ticker']:<10} ({stats_UPR.iloc[3]['Days_Active']} días)")
-print(f"      5. {stats_UPR.iloc[4]['Ticker']:<10} ({stats_UPR.iloc[4]['Days_Active']} días)")
-
-# 9. KAPPA3
-print("\n   ► Kappa3:")
-print(f"      1. {stats_Kappa3.iloc[0]['Ticker']:<10} ({stats_Kappa3.iloc[0]['Days_Active']} días)")
-print(f"      2. {stats_Kappa3.iloc[1]['Ticker']:<10} ({stats_Kappa3.iloc[1]['Days_Active']} días)")
-print(f"      3. {stats_Kappa3.iloc[2]['Ticker']:<10} ({stats_Kappa3.iloc[2]['Days_Active']} días)")
-print(f"      4. {stats_Kappa3.iloc[3]['Ticker']:<10} ({stats_Kappa3.iloc[3]['Days_Active']} días)")
-print(f"      5. {stats_Kappa3.iloc[4]['Ticker']:<10} ({stats_Kappa3.iloc[4]['Days_Active']} días)")
-
-# 10. SORTINO
-print("\n   ► Sortino:")
-print(f"      1. {stats_Sortino.iloc[0]['Ticker']:<10} ({stats_Sortino.iloc[0]['Days_Active']} días)")
-print(f"      2. {stats_Sortino.iloc[1]['Ticker']:<10} ({stats_Sortino.iloc[1]['Days_Active']} días)")
-print(f"      3. {stats_Sortino.iloc[2]['Ticker']:<10} ({stats_Sortino.iloc[2]['Days_Active']} días)")
-print(f"      4. {stats_Sortino.iloc[3]['Ticker']:<10} ({stats_Sortino.iloc[3]['Days_Active']} días)")
-print(f"      5. {stats_Sortino.iloc[4]['Ticker']:<10} ({stats_Sortino.iloc[4]['Days_Active']} días)")
-
-# 11. GR1
-print("\n   ► GR1:")
-print(f"      1. {stats_GR1.iloc[0]['Ticker']:<10} ({stats_GR1.iloc[0]['Days_Active']} días)")
-print(f"      2. {stats_GR1.iloc[1]['Ticker']:<10} ({stats_GR1.iloc[1]['Days_Active']} días)")
-print(f"      3. {stats_GR1.iloc[2]['Ticker']:<10} ({stats_GR1.iloc[2]['Days_Active']} días)")
-print(f"      4. {stats_GR1.iloc[3]['Ticker']:<10} ({stats_GR1.iloc[3]['Days_Active']} días)")
-print(f"      5. {stats_GR1.iloc[4]['Ticker']:<10} ({stats_GR1.iloc[4]['Days_Active']} días)")
-
-# 12. GR5
-print("\n   ► GR5:")
-print(f"      1. {stats_GR5.iloc[0]['Ticker']:<10} ({stats_GR5.iloc[0]['Days_Active']} días)")
-print(f"      2. {stats_GR5.iloc[1]['Ticker']:<10} ({stats_GR5.iloc[1]['Days_Active']} días)")
-print(f"      3. {stats_GR5.iloc[2]['Ticker']:<10} ({stats_GR5.iloc[2]['Days_Active']} días)")
-print(f"      4. {stats_GR5.iloc[3]['Ticker']:<10} ({stats_GR5.iloc[3]['Days_Active']} días)")
-print(f"      5. {stats_GR5.iloc[4]['Ticker']:<10} ({stats_GR5.iloc[4]['Days_Active']} días)")
-
-print("\nTasa de supervivencia de los 5 ETFs que más tiempo han permanecido en cartera:")
-
-# 1. SHARPE RATIO
-print("\n   ► Sharpe Ratio:")
-print(f"      1. {stats_SR.iloc[0]['Ticker']:<10} ({stats_SR.iloc[0]['Survival_Rate']:.2%})")
-print(f"      2. {stats_SR.iloc[1]['Ticker']:<10} ({stats_SR.iloc[1]['Survival_Rate']:.2%})")
-print(f"      3. {stats_SR.iloc[2]['Ticker']:<10} ({stats_SR.iloc[2]['Survival_Rate']:.2%})")
-print(f"      4. {stats_SR.iloc[3]['Ticker']:<10} ({stats_SR.iloc[3]['Survival_Rate']:.2%})")
-print(f"      5. {stats_SR.iloc[4]['Ticker']:<10} ({stats_SR.iloc[4]['Survival_Rate']:.2%})")
-
-# 2. SHARPE CORRELATION
-print("\n   ► Sharpe Correlation:")
-print(f"      1. {stats_SR_corr.iloc[0]['Ticker']:<10} ({stats_SR_corr.iloc[0]['Survival_Rate']:.2%})")
-print(f"      2. {stats_SR_corr.iloc[1]['Ticker']:<10} ({stats_SR_corr.iloc[1]['Survival_Rate']:.2%})")
-print(f"      3. {stats_SR_corr.iloc[2]['Ticker']:<10} ({stats_SR_corr.iloc[2]['Survival_Rate']:.2%})")
-print(f"      4. {stats_SR_corr.iloc[3]['Ticker']:<10} ({stats_SR_corr.iloc[3]['Survival_Rate']:.2%})")
-print(f"      5. {stats_SR_corr.iloc[4]['Ticker']:<10} ({stats_SR_corr.iloc[4]['Survival_Rate']:.2%})")
-
-# 3. MARGINAL SHARPE RATIO
-print("\n   ► Marginal Sharpe Ratio (MSR):")
-print(f"      1. {stats_MSR.iloc[0]['Ticker']:<10} ({stats_MSR.iloc[0]['Survival_Rate']:.2%})")
-print(f"      2. {stats_MSR.iloc[1]['Ticker']:<10} ({stats_MSR.iloc[1]['Survival_Rate']:.2%})")
-print(f"      3. {stats_MSR.iloc[2]['Ticker']:<10} ({stats_MSR.iloc[2]['Survival_Rate']:.2%})")
-print(f"      4. {stats_MSR.iloc[3]['Ticker']:<10} ({stats_MSR.iloc[3]['Survival_Rate']:.2%})")
-print(f"      5. {stats_MSR.iloc[4]['Ticker']:<10} ({stats_MSR.iloc[4]['Survival_Rate']:.2%})")
-
-# 4. VAR RATIO 1%
-print("\n   ► VaR Ratio 1%:")
-print(f"      1. {stats_VaRR1.iloc[0]['Ticker']:<10} ({stats_VaRR1.iloc[0]['Survival_Rate']:.2%})")
-print(f"      2. {stats_VaRR1.iloc[1]['Ticker']:<10} ({stats_VaRR1.iloc[1]['Survival_Rate']:.2%})")
-print(f"      3. {stats_VaRR1.iloc[2]['Ticker']:<10} ({stats_VaRR1.iloc[2]['Survival_Rate']:.2%})")
-print(f"      4. {stats_VaRR1.iloc[3]['Ticker']:<10} ({stats_VaRR1.iloc[3]['Survival_Rate']:.2%})")
-print(f"      5. {stats_VaRR1.iloc[4]['Ticker']:<10} ({stats_VaRR1.iloc[4]['Survival_Rate']:.2%})")
-
-# 5. VAR RATIO 5%
-print("\n   ► VaR Ratio 5%:")
-print(f"      1. {stats_VaRR5.iloc[0]['Ticker']:<10} ({stats_VaRR5.iloc[0]['Survival_Rate']:.2%})")
-print(f"      2. {stats_VaRR5.iloc[1]['Ticker']:<10} ({stats_VaRR5.iloc[1]['Survival_Rate']:.2%})")
-print(f"      3. {stats_VaRR5.iloc[2]['Ticker']:<10} ({stats_VaRR5.iloc[2]['Survival_Rate']:.2%})")
-print(f"      4. {stats_VaRR5.iloc[3]['Ticker']:<10} ({stats_VaRR5.iloc[3]['Survival_Rate']:.2%})")
-print(f"      5. {stats_VaRR5.iloc[4]['Ticker']:<10} ({stats_VaRR5.iloc[4]['Survival_Rate']:.2%})")
-
-# 6. VAR RATIO 10%
-print("\n   ► VaR Ratio 10%:")
-print(f"      1. {stats_VaRR10.iloc[0]['Ticker']:<10} ({stats_VaRR10.iloc[0]['Survival_Rate']:.2%})")
-print(f"      2. {stats_VaRR10.iloc[1]['Ticker']:<10} ({stats_VaRR10.iloc[1]['Survival_Rate']:.2%})")
-print(f"      3. {stats_VaRR10.iloc[2]['Ticker']:<10} ({stats_VaRR10.iloc[2]['Survival_Rate']:.2%})")
-print(f"      4. {stats_VaRR10.iloc[3]['Ticker']:<10} ({stats_VaRR10.iloc[3]['Survival_Rate']:.2%})")
-print(f"      5. {stats_VaRR10.iloc[4]['Ticker']:<10} ({stats_VaRR10.iloc[4]['Survival_Rate']:.2%})")
-
-# 7. OMEGA
-print("\n   ► Omega:")
-print(f"      1. {stats_Omega.iloc[0]['Ticker']:<10} ({stats_Omega.iloc[0]['Survival_Rate']:.2%})")
-print(f"      2. {stats_Omega.iloc[1]['Ticker']:<10} ({stats_Omega.iloc[1]['Survival_Rate']:.2%})")
-print(f"      3. {stats_Omega.iloc[2]['Ticker']:<10} ({stats_Omega.iloc[2]['Survival_Rate']:.2%})")
-print(f"      4. {stats_Omega.iloc[3]['Ticker']:<10} ({stats_Omega.iloc[3]['Survival_Rate']:.2%})")
-print(f"      5. {stats_Omega.iloc[4]['Ticker']:<10} ({stats_Omega.iloc[4]['Survival_Rate']:.2%})")
-
-# 8. UPR
-print("\n   ► UPR:")
-print(f"      1. {stats_UPR.iloc[0]['Ticker']:<10} ({stats_UPR.iloc[0]['Survival_Rate']:.2%})")
-print(f"      2. {stats_UPR.iloc[1]['Ticker']:<10} ({stats_UPR.iloc[1]['Survival_Rate']:.2%})")
-print(f"      3. {stats_UPR.iloc[2]['Ticker']:<10} ({stats_UPR.iloc[2]['Survival_Rate']:.2%})")
-print(f"      4. {stats_UPR.iloc[3]['Ticker']:<10} ({stats_UPR.iloc[3]['Survival_Rate']:.2%})")
-print(f"      5. {stats_UPR.iloc[4]['Ticker']:<10} ({stats_UPR.iloc[4]['Survival_Rate']:.2%})")
-
-# 9. KAPPA3
-print("\n   ► Kappa3:")
-print(f"      1. {stats_Kappa3.iloc[0]['Ticker']:<10} ({stats_Kappa3.iloc[0]['Survival_Rate']:.2%})")
-print(f"      2. {stats_Kappa3.iloc[1]['Ticker']:<10} ({stats_Kappa3.iloc[1]['Survival_Rate']:.2%})")
-print(f"      3. {stats_Kappa3.iloc[2]['Ticker']:<10} ({stats_Kappa3.iloc[2]['Survival_Rate']:.2%})")
-print(f"      4. {stats_Kappa3.iloc[3]['Ticker']:<10} ({stats_Kappa3.iloc[3]['Survival_Rate']:.2%})")
-print(f"      5. {stats_Kappa3.iloc[4]['Ticker']:<10} ({stats_Kappa3.iloc[4]['Survival_Rate']:.2%})")
-
-# 10. SORTINO
-print("\n   ► Sortino:")
-print(f"      1. {stats_Sortino.iloc[0]['Ticker']:<10} ({stats_Sortino.iloc[0]['Survival_Rate']:.2%})")
-print(f"      2. {stats_Sortino.iloc[1]['Ticker']:<10} ({stats_Sortino.iloc[1]['Survival_Rate']:.2%})")
-print(f"      3. {stats_Sortino.iloc[2]['Ticker']:<10} ({stats_Sortino.iloc[2]['Survival_Rate']:.2%})")
-print(f"      4. {stats_Sortino.iloc[3]['Ticker']:<10} ({stats_Sortino.iloc[3]['Survival_Rate']:.2%})")
-print(f"      5. {stats_Sortino.iloc[4]['Ticker']:<10} ({stats_Sortino.iloc[4]['Survival_Rate']:.2%})")
-
-# 11. GR1
-print("\n   ► GR1:")
-print(f"      1. {stats_GR1.iloc[0]['Ticker']:<10} ({stats_GR1.iloc[0]['Survival_Rate']:.2%})")
-print(f"      2. {stats_GR1.iloc[1]['Ticker']:<10} ({stats_GR1.iloc[1]['Survival_Rate']:.2%})")
-print(f"      3. {stats_GR1.iloc[2]['Ticker']:<10} ({stats_GR1.iloc[2]['Survival_Rate']:.2%})")
-print(f"      4. {stats_GR1.iloc[3]['Ticker']:<10} ({stats_GR1.iloc[3]['Survival_Rate']:.2%})")
-print(f"      5. {stats_GR1.iloc[4]['Ticker']:<10} ({stats_GR1.iloc[4]['Survival_Rate']:.2%})")
-
-# 12. GR5
-print("\n   ► GR5:")
-print(f"      1. {stats_GR5.iloc[0]['Ticker']:<10} ({stats_GR5.iloc[0]['Survival_Rate']:.2%})")
-print(f"      2. {stats_GR5.iloc[1]['Ticker']:<10} ({stats_GR5.iloc[1]['Survival_Rate']:.2%})")
-print(f"      3. {stats_GR5.iloc[2]['Ticker']:<10} ({stats_GR5.iloc[2]['Survival_Rate']:.2%})")
-print(f"      4. {stats_GR5.iloc[3]['Ticker']:<10} ({stats_GR5.iloc[3]['Survival_Rate']:.2%})")
-print(f"      5. {stats_GR5.iloc[4]['Ticker']:<10} ({stats_GR5.iloc[4]['Survival_Rate']:.2%})")
-
-print("\nTop 5 ETFs con mejor posición mediana en el ranking:")
-
-# 1. SHARPE RATIO
-print("\n   ► Sharpe Ratio:")
-print(f"      1. {stats_SR.iloc[0]['Ticker']:<10} (Posición mediana: {stats_SR.iloc[0]['Median_Position']:.2f}º)")
-print(f"      2. {stats_SR.iloc[1]['Ticker']:<10} (Posición mediana: {stats_SR.iloc[1]['Median_Position']:.2f}º)")
-print(f"      3. {stats_SR.iloc[2]['Ticker']:<10} (Posición mediana: {stats_SR.iloc[2]['Median_Position']:.2f}º)")
-print(f"      4. {stats_SR.iloc[3]['Ticker']:<10} (Posición mediana: {stats_SR.iloc[3]['Median_Position']:.2f}º)")
-print(f"      5. {stats_SR.iloc[4]['Ticker']:<10} (Posición mediana: {stats_SR.iloc[4]['Median_Position']:.2f}º)")
-
-# 2. SHARPE CORRELATION
-print("\n   ► Sharpe Correlation:")
-print(f"      1. {stats_SR_corr.iloc[0]['Ticker']:<10} (Posición mediana: {stats_SR_corr.iloc[0]['Median_Position']:.2f}º)")
-print(f"      2. {stats_SR_corr.iloc[1]['Ticker']:<10} (Posición mediana: {stats_SR_corr.iloc[1]['Median_Position']:.2f}º)")
-print(f"      3. {stats_SR_corr.iloc[2]['Ticker']:<10} (Posición mediana: {stats_SR_corr.iloc[2]['Median_Position']:.2f}º)")
-print(f"      4. {stats_SR_corr.iloc[3]['Ticker']:<10} (Posición mediana: {stats_SR_corr.iloc[3]['Median_Position']:.2f}º)")
-print(f"      5. {stats_SR_corr.iloc[4]['Ticker']:<10} (Posición mediana: {stats_SR_corr.iloc[4]['Median_Position']:.2f}º)")
-
-# 3. MARGINAL SHARPE RATIO
-print("\n   ► Marginal Sharpe Ratio (MSR):")
-print(f"      1. {stats_MSR.iloc[0]['Ticker']:<10} (Posición mediana: {stats_MSR.iloc[0]['Median_Position']:.2f}º)")
-print(f"      2. {stats_MSR.iloc[1]['Ticker']:<10} (Posición mediana: {stats_MSR.iloc[1]['Median_Position']:.2f}º)")
-print(f"      3. {stats_MSR.iloc[2]['Ticker']:<10} (Posición mediana: {stats_MSR.iloc[2]['Median_Position']:.2f}º)")
-print(f"      4. {stats_MSR.iloc[3]['Ticker']:<10} (Posición mediana: {stats_MSR.iloc[3]['Median_Position']:.2f}º)")
-print(f"      5. {stats_MSR.iloc[4]['Ticker']:<10} (Posición mediana: {stats_MSR.iloc[4]['Median_Position']:.2f}º)")
-
-# 4. VAR RATIO 1%
-print("\n   ► VaR Ratio 1%:")
-print(f"      1. {stats_VaRR1.iloc[0]['Ticker']:<10} (Posición mediana: {stats_VaRR1.iloc[0]['Median_Position']:.2f}º)")
-print(f"      2. {stats_VaRR1.iloc[1]['Ticker']:<10} (Posición mediana: {stats_VaRR1.iloc[1]['Median_Position']:.2f}º)")
-print(f"      3. {stats_VaRR1.iloc[2]['Ticker']:<10} (Posición mediana: {stats_VaRR1.iloc[2]['Median_Position']:.2f}º)")
-print(f"      4. {stats_VaRR1.iloc[3]['Ticker']:<10} (Posición mediana: {stats_VaRR1.iloc[3]['Median_Position']:.2f}º)")
-print(f"      5. {stats_VaRR1.iloc[4]['Ticker']:<10} (Posición mediana: {stats_VaRR1.iloc[4]['Median_Position']:.2f}º)")
-
-# 5. VAR RATIO 5%
-print("\n   ► VaR Ratio 5%:")
-print(f"      1. {stats_VaRR5.iloc[0]['Ticker']:<10} (Posición mediana: {stats_VaRR5.iloc[0]['Median_Position']:.2f}º)")
-print(f"      2. {stats_VaRR5.iloc[1]['Ticker']:<10} (Posición mediana: {stats_VaRR5.iloc[1]['Median_Position']:.2f}º)")
-print(f"      3. {stats_VaRR5.iloc[2]['Ticker']:<10} (Posición mediana: {stats_VaRR5.iloc[2]['Median_Position']:.2f}º)")
-print(f"      4. {stats_VaRR5.iloc[3]['Ticker']:<10} (Posición mediana: {stats_VaRR5.iloc[3]['Median_Position']:.2f}º)")
-print(f"      5. {stats_VaRR5.iloc[4]['Ticker']:<10} (Posición mediana: {stats_VaRR5.iloc[4]['Median_Position']:.2f}º)")
-
-# 6. VAR RATIO 10%
-print("\n   ► VaR Ratio 10%:")
-print(f"      1. {stats_VaRR10.iloc[0]['Ticker']:<10} (Posición mediana: {stats_VaRR10.iloc[0]['Median_Position']:.2f}º)")
-print(f"      2. {stats_VaRR10.iloc[1]['Ticker']:<10} (Posición mediana: {stats_VaRR10.iloc[1]['Median_Position']:.2f}º)")
-print(f"      3. {stats_VaRR10.iloc[2]['Ticker']:<10} (Posición mediana: {stats_VaRR10.iloc[2]['Median_Position']:.2f}º)")
-print(f"      4. {stats_VaRR10.iloc[3]['Ticker']:<10} (Posición mediana: {stats_VaRR10.iloc[3]['Median_Position']:.2f}º)")
-print(f"      5. {stats_VaRR10.iloc[4]['Ticker']:<10} (Posición mediana: {stats_VaRR10.iloc[4]['Median_Position']:.2f}º)")
-
-# 7. OMEGA
-print("\n   ► Omega:")
-print(f"      1. {stats_Omega.iloc[0]['Ticker']:<10} (Posición mediana: {stats_Omega.iloc[0]['Median_Position']:.2f}º)")
-print(f"      2. {stats_Omega.iloc[1]['Ticker']:<10} (Posición mediana: {stats_Omega.iloc[1]['Median_Position']:.2f}º)")
-print(f"      3. {stats_Omega.iloc[2]['Ticker']:<10} (Posición mediana: {stats_Omega.iloc[2]['Median_Position']:.2f}º)")
-print(f"      4. {stats_Omega.iloc[3]['Ticker']:<10} (Posición mediana: {stats_Omega.iloc[3]['Median_Position']:.2f}º)")
-print(f"      5. {stats_Omega.iloc[4]['Ticker']:<10} (Posición mediana: {stats_Omega.iloc[4]['Median_Position']:.2f}º)")
-
-# 8. UPR
-print("\n   ► UPR:")
-print(f"      1. {stats_UPR.iloc[0]['Ticker']:<10} (Posición mediana: {stats_UPR.iloc[0]['Median_Position']:.2f}º)")
-print(f"      2. {stats_UPR.iloc[1]['Ticker']:<10} (Posición mediana: {stats_UPR.iloc[1]['Median_Position']:.2f}º)")
-print(f"      3. {stats_UPR.iloc[2]['Ticker']:<10} (Posición mediana: {stats_UPR.iloc[2]['Median_Position']:.2f}º)")
-print(f"      4. {stats_UPR.iloc[3]['Ticker']:<10} (Posición mediana: {stats_UPR.iloc[3]['Median_Position']:.2f}º)")
-print(f"      5. {stats_UPR.iloc[4]['Ticker']:<10} (Posición mediana: {stats_UPR.iloc[4]['Median_Position']:.2f}º)")
-
-# 9. KAPPA3
-print("\n   ► Kappa3:")
-print(f"      1. {stats_Kappa3.iloc[0]['Ticker']:<10} (Posición mediana: {stats_Kappa3.iloc[0]['Median_Position']:.2f}º)")
-print(f"      2. {stats_Kappa3.iloc[1]['Ticker']:<10} (Posición mediana: {stats_Kappa3.iloc[1]['Median_Position']:.2f}º)")
-print(f"      3. {stats_Kappa3.iloc[2]['Ticker']:<10} (Posición mediana: {stats_Kappa3.iloc[2]['Median_Position']:.2f}º)")
-print(f"      4. {stats_Kappa3.iloc[3]['Ticker']:<10} (Posición mediana: {stats_Kappa3.iloc[3]['Median_Position']:.2f}º)")
-print(f"      5. {stats_Kappa3.iloc[4]['Ticker']:<10} (Posición mediana: {stats_Kappa3.iloc[4]['Median_Position']:.2f}º)")
-
-# 10. SORTINO
-print("\n   ► Sortino:")
-print(f"      1. {stats_Sortino.iloc[0]['Ticker']:<10} (Posición mediana: {stats_Sortino.iloc[0]['Median_Position']:.2f}º)")
-print(f"      2. {stats_Sortino.iloc[1]['Ticker']:<10} (Posición mediana: {stats_Sortino.iloc[1]['Median_Position']:.2f}º)")
-print(f"      3. {stats_Sortino.iloc[2]['Ticker']:<10} (Posición mediana: {stats_Sortino.iloc[2]['Median_Position']:.2f}º)")
-print(f"      4. {stats_Sortino.iloc[3]['Ticker']:<10} (Posición mediana: {stats_Sortino.iloc[3]['Median_Position']:.2f}º)")
-print(f"      5. {stats_Sortino.iloc[4]['Ticker']:<10} (Posición mediana: {stats_Sortino.iloc[4]['Median_Position']:.2f}º)")
-
-# 11. GR1
-print("\n   ► GR1:")
-print(f"      1. {stats_GR1.iloc[0]['Ticker']:<10} (Posición mediana: {stats_GR1.iloc[0]['Median_Position']:.2f}º)")
-print(f"      2. {stats_GR1.iloc[1]['Ticker']:<10} (Posición mediana: {stats_GR1.iloc[1]['Median_Position']:.2f}º)")
-print(f"      3. {stats_GR1.iloc[2]['Ticker']:<10} (Posición mediana: {stats_GR1.iloc[2]['Median_Position']:.2f}º)")
-print(f"      4. {stats_GR1.iloc[3]['Ticker']:<10} (Posición mediana: {stats_GR1.iloc[3]['Median_Position']:.2f}º)")
-print(f"      5. {stats_GR1.iloc[4]['Ticker']:<10} (Posición mediana: {stats_GR1.iloc[4]['Median_Position']:.2f}º)")
-
-# 12. GR5
-print("\n   ► GR5:")
-print(f"      1. {stats_GR5.iloc[0]['Ticker']:<10} (Posición mediana: {stats_GR5.iloc[0]['Median_Position']:.2f}º)")
-print(f"      2. {stats_GR5.iloc[1]['Ticker']:<10} (Posición mediana: {stats_GR5.iloc[1]['Median_Position']:.2f}º)")
-print(f"      3. {stats_GR5.iloc[2]['Ticker']:<10} (Posición mediana: {stats_GR5.iloc[2]['Median_Position']:.2f}º)")
-print(f"      4. {stats_GR5.iloc[3]['Ticker']:<10} (Posición mediana: {stats_GR5.iloc[3]['Median_Position']:.2f}º)")
-print(f"      5. {stats_GR5.iloc[4]['Ticker']:<10} (Posición mediana: {stats_GR5.iloc[4]['Median_Position']:.2f}º)")
-
-print("\nFamilias de los Top 5 ETFs que más tiempo han permanecido en cartera:")
-
-# 1. SHARPE RATIO
-print("\n   ► Sharpe Ratio:")
-print(f"      1. {stats_SR.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR.iloc[0]['Ticker'])})")
-print(f"      2. {stats_SR.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR.iloc[1]['Ticker'])})")
-print(f"      3. {stats_SR.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR.iloc[2]['Ticker'])})")
-print(f"      4. {stats_SR.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR.iloc[3]['Ticker'])})")
-print(f"      5. {stats_SR.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR.iloc[4]['Ticker'])})")
-
-# 2. SHARPE CORRELATION
-print("\n   ► Sharpe Correlation:")
-print(f"      1. {stats_SR_corr.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR_corr.iloc[0]['Ticker'])})")
-print(f"      2. {stats_SR_corr.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR_corr.iloc[1]['Ticker'])})")
-print(f"      3. {stats_SR_corr.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR_corr.iloc[2]['Ticker'])})")
-print(f"      4. {stats_SR_corr.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR_corr.iloc[3]['Ticker'])})")
-print(f"      5. {stats_SR_corr.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_SR_corr.iloc[4]['Ticker'])})")
-
-# 3. MARGINAL SHARPE RATIO
-print("\n   ► Marginal Sharpe Ratio (MSR):")
-print(f"      1. {stats_MSR.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_MSR.iloc[0]['Ticker'])})")
-print(f"      2. {stats_MSR.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_MSR.iloc[1]['Ticker'])})")
-print(f"      3. {stats_MSR.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_MSR.iloc[2]['Ticker'])})")
-print(f"      4. {stats_MSR.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_MSR.iloc[3]['Ticker'])})")
-print(f"      5. {stats_MSR.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_MSR.iloc[4]['Ticker'])})")
-
-# 4. VAR RATIO 1%
-print("\n   ► VaR Ratio 1%:")
-print(f"      1. {stats_VaRR1.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR1.iloc[0]['Ticker'])})")
-print(f"      2. {stats_VaRR1.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR1.iloc[1]['Ticker'])})")
-print(f"      3. {stats_VaRR1.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR1.iloc[2]['Ticker'])})")
-print(f"      4. {stats_VaRR1.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR1.iloc[3]['Ticker'])})")
-print(f"      5. {stats_VaRR1.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR1.iloc[4]['Ticker'])})")
-
-# 5. VAR RATIO 5%
-print("\n   ► VaR Ratio 5%:")
-print(f"      1. {stats_VaRR5.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR5.iloc[0]['Ticker'])})")
-print(f"      2. {stats_VaRR5.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR5.iloc[1]['Ticker'])})")
-print(f"      3. {stats_VaRR5.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR5.iloc[2]['Ticker'])})")
-print(f"      4. {stats_VaRR5.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR5.iloc[3]['Ticker'])})")
-print(f"      5. {stats_VaRR5.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR5.iloc[4]['Ticker'])})")
-
-# 6. VAR RATIO 10%
-print("\n   ► VaR Ratio 10%:")
-print(f"      1. {stats_VaRR10.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR10.iloc[0]['Ticker'])})")
-print(f"      2. {stats_VaRR10.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR10.iloc[1]['Ticker'])})")
-print(f"      3. {stats_VaRR10.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR10.iloc[2]['Ticker'])})")
-print(f"      4. {stats_VaRR10.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR10.iloc[3]['Ticker'])})")
-print(f"      5. {stats_VaRR10.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_VaRR10.iloc[4]['Ticker'])})")
-
-# 7. OMEGA
-print("\n   ► Omega:")
-print(f"      1. {stats_Omega.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Omega.iloc[0]['Ticker'])})")
-print(f"      2. {stats_Omega.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Omega.iloc[1]['Ticker'])})")
-print(f"      3. {stats_Omega.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Omega.iloc[2]['Ticker'])})")
-print(f"      4. {stats_Omega.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Omega.iloc[3]['Ticker'])})")
-print(f"      5. {stats_Omega.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Omega.iloc[4]['Ticker'])})")
-
-# 8. UPR
-print("\n   ► UPR:")
-print(f"      1. {stats_UPR.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_UPR.iloc[0]['Ticker'])})")
-print(f"      2. {stats_UPR.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_UPR.iloc[1]['Ticker'])})")
-print(f"      3. {stats_UPR.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_UPR.iloc[2]['Ticker'])})")
-print(f"      4. {stats_UPR.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_UPR.iloc[3]['Ticker'])})")
-print(f"      5. {stats_UPR.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_UPR.iloc[4]['Ticker'])})")
-
-# 9. KAPPA3
-print("\n   ► Kappa3:")
-print(f"      1. {stats_Kappa3.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Kappa3.iloc[0]['Ticker'])})")
-print(f"      2. {stats_Kappa3.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Kappa3.iloc[1]['Ticker'])})")
-print(f"      3. {stats_Kappa3.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Kappa3.iloc[2]['Ticker'])})")
-print(f"      4. {stats_Kappa3.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Kappa3.iloc[3]['Ticker'])})")
-print(f"      5. {stats_Kappa3.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Kappa3.iloc[4]['Ticker'])})")
-
-# 10. SORTINO
-print("\n   ► Sortino:")
-print(f"      1. {stats_Sortino.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Sortino.iloc[0]['Ticker'])})")
-print(f"      2. {stats_Sortino.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Sortino.iloc[1]['Ticker'])})")
-print(f"      3. {stats_Sortino.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Sortino.iloc[2]['Ticker'])})")
-print(f"      4. {stats_Sortino.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Sortino.iloc[3]['Ticker'])})")
-print(f"      5. {stats_Sortino.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_Sortino.iloc[4]['Ticker'])})")
-
-# 11. GR1
-print("\n   ► GR1:")
-print(f"      1. {stats_GR1.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR1.iloc[0]['Ticker'])})")
-print(f"      2. {stats_GR1.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR1.iloc[1]['Ticker'])})")
-print(f"      3. {stats_GR1.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR1.iloc[2]['Ticker'])})")
-print(f"      4. {stats_GR1.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR1.iloc[3]['Ticker'])})")
-print(f"      5. {stats_GR1.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR1.iloc[4]['Ticker'])})")
-
-# 12. GR5
-print("\n   ► GR5:")
-print(f"      1. {stats_GR5.iloc[0]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR5.iloc[0]['Ticker'])})")
-print(f"      2. {stats_GR5.iloc[1]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR5.iloc[1]['Ticker'])})")
-print(f"      3. {stats_GR5.iloc[2]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR5.iloc[2]['Ticker'])})")
-print(f"      4. {stats_GR5.iloc[3]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR5.iloc[3]['Ticker'])})")
-print(f"      5. {stats_GR5.iloc[4]['Ticker']:<10} ({ticker_to_macrofamily.get(stats_GR5.iloc[4]['Ticker'])})")
+ratio_names = {
+    'SR': 'Sharpe Ratio',
+    'SR_corr': 'Sharpe Correlation',
+    'MSR': 'Marginal Sharpe Ratio (MSR)',
+    'VaRR1': 'VaR Ratio 1%',
+    'VaRR5': 'VaR Ratio 5%',
+    'VaRR10': 'VaR Ratio 10%',
+    'Omega': 'Omega',
+    'UPR': 'UPR',
+    'Kappa3': 'Kappa3',
+    'Sortino': 'Sortino',
+    'GR1': 'GR1',
+    'GR5': 'GR5'
+}
 
 all_stats_dict = {
     'SR': stats_SR,
@@ -1027,32 +558,46 @@ all_stats_dict = {
     'GR5': stats_GR5
 }
 
-# GRÁFICO
+print("\nPARTE 1.4. - ESTADÍSTICAS DE SELECCIÓN DE ACTIVOS (TOP 5)")
+
+# 1. DÍAS EN CARTERA
+print("\nTop 5 ETFs que más tiempo han permanecido en cartera:")
+for key, name in ratio_names.items():
+    print(f"\n   ► {name}:")
+    df = all_stats_dict[key]
+    for i in range(5):
+        print(f"      {i+1}. {df.iloc[i]['Ticker']:<10} ({df.iloc[i]['Days_Active']} días)")
+
+# 2. TASA DE SUPERVIVENCIA
+print("\nTasa de supervivencia de los 5 ETFs que más tiempo han permanecido en cartera:")
+for key, name in ratio_names.items():
+    print(f"\n   ► {name}:")
+    df = all_stats_dict[key]
+    for i in range(5):
+        print(f"      {i+1}. {df.iloc[i]['Ticker']:<10} ({df.iloc[i]['Survival_Rate']:.2%})")
+
+# 3. POSICIÓN MEDIANA
+print("\nTop 5 ETFs con mejor posición mediana en el ranking:")
+for key, name in ratio_names.items():
+    print(f"\n   ► {name}:")
+    df = all_stats_dict[key]
+    for i in range(5):
+        print(f"      {i+1}. {df.iloc[i]['Ticker']:<10} (Posición mediana: {df.iloc[i]['Median_Position']:.2f}º)")
+
+# 4. FAMILIAS SMART BETA
+print("\nFamilias de los Top 5 ETFs que más tiempo han permanecido en cartera:")
+for key, name in ratio_names.items():
+    print(f"\n   ► {name}:")
+    df = all_stats_dict[key]
+    for i in range(5):
+        ticker = df.iloc[i]['Ticker']
+        family = ticker_to_macrofamily.get(ticker, "Desconocida")
+        print(f"      {i+1}. {ticker:<10} ({family})")
+
+# GRÁFICO CONJUNTO
 plot_survival_heatmap(all_stats_dict, ticker_to_macrofamily)
 
-# PARTE V: CREAMOS SERIES TEMPORALES DE LOS RATIOS DE PERFORMANCE
-
-# FECHA INICIO DE LA SERIE
-fecha_inicio_IS = df_rendimientos.index[M].strftime('%Y-%m-%d') 
-
-# GENERAMOS LAS SERIES
-rankings_completa, series_completa = ROLLING_WINDOW_RANKINGS(df_rendimientos, oos_start_date=fecha_inicio_IS, K=K, ratios_list=ratios)
-
-serie_SR_completa = series_completa['SR']
-serie_SR_corr_completa = series_completa['SR_corr']
-serie_MSR_completa = series_completa['MSR']
-serie_VaRR1_completa = series_completa['VaRR1']
-serie_VaRR5_completa = series_completa['VaRR5']
-serie_VaRR10_completa = series_completa['VaRR10']
-serie_Omega_completa = series_completa['Omega']
-serie_UPR_completa = series_completa['UPR']
-serie_Kappa3_completa = series_completa['Kappa3']
-serie_Sortino_completa = series_completa['Sortino']
-serie_GR1_completa = series_completa['GR1']
-serie_GR5_completa = series_completa['GR5']
-
 # CONVERTIMOS IDS A TICKERS
-
 ranking_SR = ranking_SR_oos.map(id_to_ticker.get)
 ranking_SR_corr = ranking_SR_corr_oos.map(id_to_ticker.get)
 ranking_MSR = ranking_MSR_oos.map(id_to_ticker.get)
@@ -1066,8 +611,8 @@ ranking_Sortino = ranking_Sortino_oos.map(id_to_ticker.get)
 ranking_GR1 = ranking_GR1_oos.map(id_to_ticker.get)
 ranking_GR5 = ranking_GR5_oos.map(id_to_ticker.get)
 
-# ANEXO D: ANÁLISIS DE ROBUSTEZ TAMAÑO DE LAS CARTERAS (K=10 vs K=20)
-print("\n ANEXO D: ANÁLISIS DE SENSIBILIDAD (K=10 vs K=20)")
+# ANEXO C.1: ANÁLISIS DE ROBUSTEZ TAMAÑO DE LAS CARTERAS (K=10 vs K=20)
+print("\n ANEXO C.1. - ANÁLISIS DE SENSIBILIDAD (K=10 vs K=20)")
 
 # 1. PARÁMETROS Y RANKINGS EXCLUSIVOS PARA TOP 10
 K_rob = 10
@@ -1135,6 +680,7 @@ diccionario_K10_vs_K20 = {
 
 # 6. GRÁFICO DE SPREADS
 plot_cumulative_returns(diccionario_K10_vs_K20)
+print("   Gráfico comparativo de rendimientos acumulados (K=10 vs K=20) generado.")
 
 # VARIABLES GUARADAS PARA EL PROXIMO CÓDIGO
 variables = {
@@ -1166,71 +712,18 @@ variables = {
 
 joblib.dump(variables, VARIABLES_FILE)
 
-"""
-# EXCEL
-
+# 7. EXPORTACIÓN A EXCEL
 with pd.ExcelWriter(OUTPUT_FILE, engine='openpyxl', mode='w') as writer:
-    
-    # ID DE ETFS
     df_ID.to_excel(writer, sheet_name='IDs', index=False)
     
-    # SERIES TEMPORALES OUT OF SAMPLE
-    serie_SR_oos.to_excel(writer, sheet_name='Serie Sharpe OOS')
-    serie_SR_corr_oos.to_excel(writer, sheet_name='Serie Sharpe Corr OOS')
-    serie_MSR_oos.to_excel(writer, sheet_name='Serie Marginal Sharpe OOS')
-    serie_VaRR1_oos.to_excel(writer, sheet_name='Serie VaRR1 OOS')
-    serie_VaRR5_oos.to_excel(writer, sheet_name='Serie VaRR5 OOS')
-    serie_VaRR10_oos.to_excel(writer, sheet_name='Serie VaRR10 OOS')
-    serie_Omega_oos.to_excel(writer, sheet_name='Serie Omega OOS')
-    serie_UPR_oos.to_excel(writer, sheet_name='Serie UPR OOS')
-    serie_Kappa3_oos.to_excel(writer, sheet_name='Serie Kappa3 OOS')
-    serie_Sortino_oos.to_excel(writer, sheet_name='Serie Sortino OOS')
-    serie_GR1_oos.to_excel(writer, sheet_name='Serie GR1 OOS')
-    serie_GR5_oos.to_excel(writer, sheet_name='Serie GR5 OOS')
-    
-    # SERIES TEMPORALES COMPLETAS
-    serie_SR_completa.to_excel(writer, sheet_name='Serie Sharpe COMPLETA')
-    serie_SR_corr_completa.to_excel(writer, sheet_name='Serie Sharpe Corr COMPLETA')
-    serie_MSR_completa.to_excel(writer, sheet_name='Serie Marginal Sharpe COMPLETA')
-    serie_VaRR1_completa.to_excel(writer, sheet_name='Serie VaRR1 COMPLETA')
-    serie_VaRR5_completa.to_excel(writer, sheet_name='Serie VaRR5 COMPLETA')
-    serie_VaRR10_completa.to_excel(writer, sheet_name='Serie VaRR10 COMPLETA')
-    serie_Omega_completa.to_excel(writer, sheet_name='Serie Omega COMPLETA')
-    serie_UPR_completa.to_excel(writer, sheet_name='Serie UPR COMPLETA')
-    serie_Kappa3_completa.to_excel(writer, sheet_name='Serie Kappa3 COMPLETA')
-    serie_Sortino_completa.to_excel(writer, sheet_name='Serie Sortino COMPLETA')
-    serie_GR1_completa.to_excel(writer, sheet_name='Serie GR1 COMPLETA')
-    serie_GR5_completa.to_excel(writer, sheet_name='Serie GR5 COMPLETA')
-    
-    # RANKINGS (TOP K) OUT OF SAMPLE
-    ranking_SR.to_excel(writer, sheet_name='Ranking Sharpe OOS')
-    ranking_SR_corr.to_excel(writer, sheet_name='Ranking Sharpe Corr OOS')
-    ranking_MSR.to_excel(writer, sheet_name='Ranking Marginal Sharpe OOS')
-    ranking_VaRR1.to_excel(writer, sheet_name='Ranking VaRR1 OOS')
-    ranking_VaRR5.to_excel(writer, sheet_name='Ranking VaRR5 OOS')
-    ranking_VaRR10.to_excel(writer, sheet_name='Ranking VaRR10 OOS')
-    ranking_Omega.to_excel(writer, sheet_name='Ranking Omega OOS')
-    ranking_UPR.to_excel(writer, sheet_name='Ranking UPR OOS')
-    ranking_Kappa3.to_excel(writer, sheet_name='Ranking Kappa3 OOS')
-    ranking_Sortino.to_excel(writer, sheet_name='Ranking Sortino OOS')
-    ranking_GR1.to_excel(writer, sheet_name='Ranking GR1 OOS')
-    ranking_GR5.to_excel(writer, sheet_name='Ranking GR5 OOS')
-    
-    # REBALANCEO DE ETFS
+    for ratio in ratios:
+        series_oos[ratio].to_excel(writer, sheet_name=f'Serie {ratio} OOS')
+        rankings_oos[ratio].map(id_to_ticker.get).to_excel(writer, sheet_name=f'Ranking {ratio} OOS')
+        all_stats_dict[ratio].to_excel(writer, sheet_name=f'Survival_{ratio}', index=False)
+        
     df_turnover_activos.to_excel(writer, sheet_name='Rebalanceo diario')
     df_turnover_freq.to_excel(writer, sheet_name='Frecuencia rebalanceo')
-
-    # ESTADÍSTICAS DE POSICIÓN DE ETFS
-    stats_SR.to_excel(writer, sheet_name='Survival_SR', index=False)
-    stats_SR_corr.to_excel(writer, sheet_name='Survival_SR_corr', index=False)
-    stats_MSR.to_excel(writer, sheet_name='Survival_MSR', index=False)
-    stats_VaRR1.to_excel(writer, sheet_name='Survival_VaRR1', index=False)
-    stats_VaRR5.to_excel(writer, sheet_name='Survival_VaRR5', index=False)
-    stats_VaRR10.to_excel(writer, sheet_name='Survival_VaRR10', index=False)
-    stats_Omega.to_excel(writer, sheet_name='Survival_Omega', index=False)
-    stats_UPR.to_excel(writer, sheet_name='Survival_UPR', index=False)
-    stats_Kappa3.to_excel(writer, sheet_name='Survival_Kappa3', index=False)
-    stats_Sortino.to_excel(writer, sheet_name='Survival_Sortino', index=False)
-    stats_GR1.to_excel(writer, sheet_name='Survival_GR1', index=False)
-    stats_GR5.to_excel(writer, sheet_name='Survival_GR5', index=False)
-"""
+    
+print("\n PARTE I COMPLETADA")
+print(f"   • Cálculos exportados en : {OUTPUT_FILE}")
+print(f"   • Artefactos del modelo guardados en: {VARIABLES_FILE}")
