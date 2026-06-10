@@ -242,8 +242,11 @@ def HERC(Sigma: np.ndarray, labels: list = None) -> tuple:
         leaves_right = _get_leaves(link, right, K)
 
         # Asignación Inter-clúster (ERC)
-        var_left = getClusterVar(Sigma_df, leaves_left)
-        alpha = 1.0 - (var_left / (var_left + getClusterVar(Sigma_df, leaves_right)))
+        risk_left = np.sqrt(getClusterVar(Sigma_df, leaves_left))
+        risk_right = np.sqrt(getClusterVar(Sigma_df, leaves_right))
+
+        # El factor alpha penaliza en base a la volatilidad (riesgo)
+        alpha = 1.0 - (risk_left / (risk_left + risk_right))
 
         node_weight[left] = node_weight[split_node] * alpha
         node_weight[right] = node_weight[split_node] * (1.0 - alpha)

@@ -21,12 +21,12 @@ def SHARPE_RATIO(matrix: np.ndarray, rf: float = 0.0) -> np.ndarray:
     return (mu - rf) * np.sqrt(252) / sigma
 
 def MSR(matrix: np.ndarray, rf: float = 0.0) -> np.ndarray:
-    """Marginal Sharpe Ratio (MSR) por activo respecto a cartera EW.
+    """Marginal Sharpe Ratio (MSR) por activo respecto al mercado total (N).
     MSR_i = (sigma_i / sigma_p) * SR_i - (Cov(r_i, r_p) / sigma_p^2) * SR_p"""
-    T, K = matrix.shape
+    T, N = matrix.shape
     
-    # 1. Pesos de la cartera Base (EW)
-    w_ew = np.ones(K) / K
+    # 1. Pesos de la cartera Base de Mercado (EW sobre N=100 activos)
+    w_ew = np.ones(N) / N
     
     # 2. Momentos de la cartera base (EW)
     r_p = matrix @ w_ew
@@ -35,13 +35,13 @@ def MSR(matrix: np.ndarray, rf: float = 0.0) -> np.ndarray:
     sr_p = (mu_p - rf) / sigma_p
     
     # 3. Momentos individuales de los activos (i)
-    mu_i = np.mean(matrix, axis=0)           # (K x 1)
-    sigma_i = np.std(matrix, axis=0, ddof=1) # (K x 1)
-    sr_i = (mu_i - rf) / sigma_i             # (K x 1)
+    mu_i = np.mean(matrix, axis=0)           # (N x 1)
+    sigma_i = np.std(matrix, axis=0, ddof=1) # (N x 1)
+    sr_i = (mu_i - rf) / sigma_i             # (N x 1)
     
-    # 4. Covarianza con la cartera
+    # 4. Covarianza con la cartera base
     Sigma = np.cov(matrix, rowvar=False, ddof=1)
-    cov_ip = Sigma @ w_ew                    # (K x 1)
+    cov_ip = Sigma @ w_ew                    # (N x 1)
     
     # 5. MSR
     msr = (sigma_i / sigma_p) * sr_i - (cov_ip / (sigma_p ** 2)) * sr_p
